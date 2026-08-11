@@ -36,6 +36,26 @@ const menus = [
     icon: <FiScissors size={22} />,
     path: "/cutting-orders",
   },
+  {
+    name: "Accounts",
+    icon: <MdAssessment size={22} />,
+    path: "/accounts",
+  },
+  {
+    name: "Record Advance",
+    icon: <VscGraph size={22} />,
+    path: "/record-advance",
+  },
+  {
+    name: "Advance Balance",
+    icon: <MdOutlineAccountBalanceWallet size={22} />,
+    path: "/advance-balance",
+  },
+  {
+    name: "Invoice",
+    icon: <TbInvoice size={22} />,
+    path: "/invoice",
+  },
   //   {
   //     name: "Sales Report",
   //     icon: <FiFileText size={22} />,
