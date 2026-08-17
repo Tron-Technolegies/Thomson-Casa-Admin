@@ -12,7 +12,7 @@ import {
 } from "react-icons/md";
 import { BiPurchaseTagAlt } from "react-icons/bi";
 import { VscCreditCard, VscGraph } from "react-icons/vsc";
-import { FiFileText, FiShoppingCart, FiScissors } from "react-icons/fi";
+import { FiFileText, FiShoppingCart, FiScissors, FiBell } from "react-icons/fi";
 import { IoAnalytics } from "react-icons/io5";
 import { TbInvoice } from "react-icons/tb";
 const menus = [
@@ -55,6 +55,16 @@ const menus = [
     name: "Invoice",
     icon: <TbInvoice size={22} />,
     path: "/invoice",
+  },
+  {
+    name: "Reports",
+    icon: <MdAnalytics size={22} />,
+    path: "/reports",
+  },
+  {
+    name: "Notification",
+    icon: <FiBell size={22} />,
+    path: "/notification",
   },
   //   {
   //     name: "Sales Report",
