@@ -1,33 +1,33 @@
 import React from "react";
 
-const cuttingMetrics = [
-  { 
-    title: "Pending", 
-    value: "5", 
-    subtitle: "Orders",
-    dotColor: "bg-yellow-400",
-    bgColor: "bg-yellow-50",
-    borderColor: "border-yellow-100"
-  },
-  { 
-    title: "In Progress", 
-    value: "3", 
-    subtitle: "Orders",
-    dotColor: "bg-blue-500",
-    bgColor: "bg-blue-50",
-    borderColor: "border-blue-100"
-  },
-  { 
-    title: "Completed", 
-    value: "29", 
-    subtitle: "Orders",
-    dotColor: "bg-green-500",
-    bgColor: "bg-green-50",
-    borderColor: "border-green-100"
-  },
-];
+export default function CuttingStatCards({ stats }) {
+  const cuttingMetrics = [
+    { 
+      title: "Pending", 
+      value: stats?.pending_orders || "0", 
+      subtitle: "Orders",
+      dotColor: "bg-yellow-400",
+      bgColor: "bg-yellow-50",
+      borderColor: "border-yellow-100"
+    },
+    { 
+      title: "In Progress", 
+      value: stats?.cutting_queue || "0", 
+      subtitle: "Orders",
+      dotColor: "bg-blue-500",
+      bgColor: "bg-blue-50",
+      borderColor: "border-blue-100"
+    },
+    { 
+      title: "Completed", 
+      value: stats?.ready_pickup || "0", 
+      subtitle: "Orders",
+      dotColor: "bg-green-500",
+      bgColor: "bg-green-50",
+      borderColor: "border-green-100"
+    },
+  ];
 
-export default function CuttingStatCards() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
       {cuttingMetrics.map((metric, idx) => (

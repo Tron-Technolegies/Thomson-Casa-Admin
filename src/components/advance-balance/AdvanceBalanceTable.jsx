@@ -1,15 +1,7 @@
 import React from "react";
 import { FiDownload, FiPrinter } from "react-icons/fi";
 
-const balanceDetails = [
-  { received: "₹ 1,50,000", consumed: "₹ 84,000", balance: "₹ 66,000", percent: 56, lastTx: "09 Jul 2026" },
-  { received: "₹ 2,00,000", consumed: "₹ 74,000", balance: "₹ 15,000", percent: 93, lastTx: "08 Jul 2026" },
-  { received: "₹ 1,00,000", consumed: "₹ 24,000", balance: "₹ 37,000", percent: 63, lastTx: "06 Jul 2026" },
-  { received: "₹ 75,000", consumed: "₹ 94,000", balance: "₹ 19,000", percent: 75, lastTx: "08 Jul 2026" },
-  { received: "₹ 50,000", consumed: "₹ 44,000", balance: "₹ 29,000", percent: 42, lastTx: "07 Jul 2026" },
-];
-
-export default function AdvanceBalanceTable() {
+export default function AdvanceBalanceTable({ balances = [], loading }) {
   return (
     <div className="bg-white border border-[#00000026] rounded-xl overflow-hidden mt-6">
       <div className="flex justify-between items-center p-6 border-b border-[#00000026]">
@@ -27,6 +19,7 @@ export default function AdvanceBalanceTable() {
         <table className="w-full text-left text-sm text-gray-600">
           <thead className="bg-[#F8F9FB] text-xs uppercase text-gray-400 font-bold border-b border-[#00000026]">
             <tr>
+              <th className="px-6 py-4">CUSTOMER</th>
               <th className="px-6 py-4">ADVANCE RECEIVED</th>
               <th className="px-6 py-4">CONSUMED</th>
               <th className="px-6 py-4">BALANCE</th>
@@ -35,26 +28,37 @@ export default function AdvanceBalanceTable() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#00000026]">
-            {balanceDetails.map((row, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
-                <td className="px-6 py-4 font-bold text-gray-900">{row.received}</td>
-                <td className="px-6 py-4">
-                  <span className="bg-gray-200 text-gray-700 font-bold px-3 py-1 rounded-full text-xs">
-                    {row.consumed}
-                  </span>
-                </td>
-                <td className="px-6 py-4 font-bold text-green-500">{row.balance}</td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-24 bg-gray-200 rounded-full h-2">
-                      <div className="bg-[#4B5EAA] h-2 rounded-full" style={{ width: `${row.percent}%` }}></div>
-                    </div>
-                    <span className="text-xs font-bold text-gray-400">{row.percent}%</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 font-bold text-gray-900">{row.lastTx}</td>
+            {loading ? (
+              <tr>
+                <td colSpan="6" className="px-6 py-4 text-center text-gray-500">Loading balances...</td>
               </tr>
-            ))}
+            ) : balances.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="px-6 py-4 text-center text-gray-500">No balance records found.</td>
+              </tr>
+            ) : (
+              balances.map((row, idx) => (
+                <tr key={idx} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 font-medium text-[#4B5EAA]">{row.customer_name}</td>
+                  <td className="px-6 py-4 font-bold text-gray-900">₹ {row.received.toLocaleString()}</td>
+                  <td className="px-6 py-4">
+                    <span className="bg-gray-200 text-gray-700 font-bold px-3 py-1 rounded-full text-xs">
+                      ₹ {row.consumed.toLocaleString()}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 font-bold text-green-500">₹ {row.balance.toLocaleString()}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <div className="bg-[#4B5EAA] h-2 rounded-full" style={{ width: `${row.percent}%` }}></div>
+                      </div>
+                      <span className="text-xs font-bold text-gray-400">{row.percent}%</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 font-bold text-gray-900">{row.last_tx}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

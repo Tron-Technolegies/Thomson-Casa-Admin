@@ -7,8 +7,6 @@ import { TbInvoice } from "react-icons/tb";
 
 import SalesReports from "../components/reports/SalesReports";
 import CustomerPurchaseReport from "../components/reports/CustomerPurchaseReport";
-import CustomerBalanceReport from "../components/reports/CustomerBalanceReport";
-import OutstandingPaymentReport from "../components/reports/OutstandingPaymentReport";
 import AdvanceBalanceReport from "../components/reports/AdvanceBalanceReport";
 import InvoiceReport from "../components/reports/InvoiceReport";
 
@@ -19,8 +17,6 @@ export default function Reports() {
   const tabs = [
     { name: "Sales Report", icon: <FiFileText /> },
     { name: "Customer Purchase", icon: <BiPurchaseTagAlt /> },
-    { name: "Customer balance", icon: <MdOutlineAccountBalanceWallet /> },
-    { name: "Outstanding Payment", icon: <VscCreditCard /> },
     { name: "Advance Balance", icon: <VscGraph /> },
     { name: "Invoice Report", icon: <TbInvoice /> },
   ];
@@ -69,8 +65,6 @@ export default function Reports() {
       <div>
         {activeTab === "Sales Report" && <SalesReports />}
         {activeTab === "Customer Purchase" && <CustomerPurchaseReport />}
-        {activeTab === "Customer balance" && <CustomerBalanceReport />}
-        {activeTab === "Outstanding Payment" && <OutstandingPaymentReport />}
         {activeTab === "Advance Balance" && <AdvanceBalanceReport />}
         {activeTab === "Invoice Report" && <InvoiceReport />}
       </div>

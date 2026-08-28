@@ -1,14 +1,5 @@
-import React, { useState } from "react";
-import { FiEdit2, FiCalendar } from "react-icons/fi";
-
-const ordersData = [
-  { id: "1", orderNo: "Raj Enterprises", customer: "Raj Foods Pvt Ltd", date: "2026-10-08", delivery: "2026-10-08", type: "Dressed Chicken", weight: "250 Kg", status: "Delivered" },
-  { id: "2", orderNo: "Suresh Kumar", customer: "Fresh Mart", date: "2026-10-08", delivery: "2026-10-08", type: "Full Chicken", weight: "150 Kg", status: "Cutting" },
-  { id: "3", orderNo: "Sanjay Das", customer: "Spicyzone Pvt Ltd", date: "2026-10-08", delivery: "2026-10-08", type: "Dressed Chicken", weight: "150 Kg", status: "Ready" },
-  { id: "4", orderNo: "Sanjay Das", customer: "Spicyzone Pvt Ltd", date: "2026-10-08", delivery: "2026-10-08", type: "Full Chicken", weight: "250 Kg", status: "Pending" },
-  { id: "5", orderNo: "Raj Enterprises", customer: "Raj Foods Pvt Ltd", date: "2026-10-08", delivery: "2026-10-08", type: "Dressed Chicken", weight: "150 Kg", status: "Pending" },
-  { id: "6", orderNo: "Sanjay Das", customer: "Spicyzone Pvt Ltd", date: "2026-10-08", delivery: "2026-10-08", type: "Full Chicken", weight: "150 Kg", status: "Cancelled" },
-];
+import React from "react";
+import { FiEdit2 } from "react-icons/fi";
 
 const tabs = ["All", "Pending", "Cutting", "Ready", "Delivered", "Cancelled"];
 
@@ -23,8 +14,9 @@ const getStatusStyle = (status) => {
   }
 };
 
-export default function OrderTable({ onEdit }) {
-  const [activeTab, setActiveTab] = useState("All");
+export default function OrderTable({ 
+  orders = [], loading, activeTab, setActiveTab, dateFilter, setDateFilter, onEdit 
+}) {
 
   return (
     <div>
@@ -47,8 +39,12 @@ export default function OrderTable({ onEdit }) {
         </div>
         
         <div className="flex items-center gap-2 bg-white border border-[#00000026] rounded-full px-4 py-2">
-          <FiCalendar className="text-gray-400" />
-          <span className="text-sm font-semibold text-gray-700">20/10/2026</span>
+          <input 
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="text-sm font-semibold text-gray-700 outline-none"
+          />
         </div>
       </div>
 
@@ -69,29 +65,39 @@ export default function OrderTable({ onEdit }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#00000026]">
-              {ordersData.map((order, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium text-gray-900">{order.orderNo}</td>
-                  <td className="px-6 py-4 font-medium text-gray-900">{order.customer}</td>
-                  <td className="px-6 py-4">{order.date}</td>
-                  <td className="px-6 py-4">{order.delivery}</td>
-                  <td className="px-6 py-4 font-medium text-gray-900">{order.type}</td>
-                  <td className="px-6 py-4 font-medium text-gray-900">{order.weight}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusStyle(order.status)}`}>
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <button 
-                      onClick={() => onEdit && onEdit(order)}
-                      className="text-gray-600 hover:text-[#4B5EAA] transition"
-                    >
-                      <FiEdit2 size={18} />
-                    </button>
-                  </td>
+              {loading ? (
+                <tr>
+                  <td colSpan="8" className="px-6 py-4 text-center text-gray-500">Loading orders...</td>
                 </tr>
-              ))}
+              ) : orders.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="px-6 py-4 text-center text-gray-500">No orders found.</td>
+                </tr>
+              ) : (
+                orders.map((order) => (
+                  <tr key={order.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 font-medium text-gray-900">{order.order_number}</td>
+                    <td className="px-6 py-4 font-medium text-gray-900">{order.customer}</td>
+                    <td className="px-6 py-4">{new Date(order.created_at).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">{new Date(order.delivery_date).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 font-medium text-gray-900">{order.chicken_type}</td>
+                    <td className="px-6 py-4 font-medium text-gray-900">{order.weight} Kg</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusStyle(order.status)}`}>
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <button 
+                        onClick={() => onEdit && onEdit(order)}
+                        className="text-gray-600 hover:text-[#4B5EAA] transition"
+                      >
+                        <FiEdit2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

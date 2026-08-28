@@ -1,16 +1,32 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { FiTrendingUp, FiCreditCard, FiShoppingCart, FiDownload } from "react-icons/fi";
 import { MdOutlineAccountBalanceWallet } from "react-icons/md";
-
-const advanceData = [
-  { customer: "Name", received: "₹ 4,70,000", consumed: "₹ 84,000", balance: "₹ 66,000", percent: 56, lastTx: "09 Jul 2026" },
-  { customer: "Name", received: "₹ 2,80,000", consumed: "₹ 1,85,000", balance: "₹ 15,000", percent: 93, lastTx: "09 Jul 2026" },
-  { customer: "Name", received: "₹ 1,50,000", consumed: "₹ 63,000", balance: "₹ 37,000", percent: 63, lastTx: "08 Jul 2026" },
-  { customer: "Name", received: "₹ 3,90,000", consumed: "₹ 56,000", balance: "₹ 19,000", percent: 75, lastTx: "08 Jul 2026" },
-  { customer: "Name", received: "₹ 3,40,000", consumed: "₹ 21,000", balance: "₹ 29,000", percent: 42, lastTx: "07 Jul 2026" },
-];
+import { api } from "../../services/api";
 
 export default function AdvanceBalanceReport() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchBalances = async () => {
+      try {
+        const res = await api.get("/admin/advances/balance/");
+        if (res.success) {
+          setData(res.balances || []);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBalances();
+  }, []);
+
+  const totalReceived = data.reduce((sum, item) => sum + parseFloat(item.total_advances || 0), 0);
+  const totalConsumed = data.reduce((sum, item) => sum + parseFloat(item.advance_used || 0), 0);
+  const totalBalance = data.reduce((sum, item) => sum + parseFloat(item.current_balance || 0), 0);
+
   return (
     <div>
       {/* Stat Cards */}
@@ -21,7 +37,7 @@ export default function AdvanceBalanceReport() {
             <div className="bg-blue-100 p-2 rounded-lg text-blue-500"><FiCreditCard size={20} /></div>
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">₹5,75,500</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">₹{totalReceived.toLocaleString()}</h3>
             <div className="flex items-center text-green-600 text-xs font-semibold gap-1"><FiTrendingUp /> Total collected</div>
           </div>
         </div>
@@ -32,7 +48,7 @@ export default function AdvanceBalanceReport() {
             <div className="bg-purple-100 p-2 rounded-lg text-purple-400"><FiShoppingCart size={20} /></div>
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">₹4,09,000</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">₹{totalConsumed.toLocaleString()}</h3>
             <div className="flex items-center text-gray-400 text-xs font-semibold gap-1">Applied to orders</div>
           </div>
         </div>
@@ -43,7 +59,7 @@ export default function AdvanceBalanceReport() {
             <div className="bg-green-100 p-2 rounded-lg text-green-500"><MdOutlineAccountBalanceWallet size={20} /></div>
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">₹1,66,000</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">₹{totalBalance.toLocaleString()}</h3>
             <div className="flex items-center text-green-600 text-xs font-semibold gap-1"><FiTrendingUp /> Available advance</div>
           </div>
         </div>
@@ -54,11 +70,8 @@ export default function AdvanceBalanceReport() {
         <div className="flex justify-between items-center p-6 border-b border-[#00000026]">
           <h2 className="text-lg font-bold text-gray-900">Advance Balance Details</h2>
           <div className="flex gap-4">
-            <button className="flex items-center gap-2 bg-green-100 text-green-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-200 transition">
-              <FiDownload size={16} /> Excel
-            </button>
-            <button className="flex items-center gap-2 bg-red-100 text-red-500 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-200 transition">
-              <FiDownload size={16} /> PDF
+            <button onClick={() => window.print()} className="flex items-center gap-2 bg-green-100 text-green-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-200 transition">
+              <FiDownload size={16} /> Download Report
             </button>
           </div>
         </div>
@@ -71,27 +84,36 @@ export default function AdvanceBalanceReport() {
                 <th className="px-6 py-4 text-center">CONSUMED</th>
                 <th className="px-6 py-4 text-center">BALANCE</th>
                 <th className="px-6 py-4 text-center">UTILIZATION</th>
-                <th className="px-6 py-4 text-right">LAST TRANSACTION</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#00000026]">
-              {advanceData.map((row, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="px-6 py-5 font-medium text-gray-900">{row.customer}</td>
-                  <td className="px-6 py-5 font-medium text-gray-900 text-center">{row.received}</td>
-                  <td className="px-6 py-5 font-medium text-gray-900 text-center">{row.consumed}</td>
-                  <td className="px-6 py-5 font-bold text-gray-900 text-center">{row.balance}</td>
-                  <td className="px-6 py-5">
-                    <div className="flex justify-center items-center gap-3">
-                      <div className="w-20 bg-gray-200 rounded-full h-2">
-                        <div className="bg-[#4B5EAA] h-2 rounded-full" style={{ width: `${row.percent}%` }}></div>
-                      </div>
-                      <span className="text-xs font-bold text-gray-400 w-6">{row.percent}%</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5 font-medium text-gray-900 text-right">{row.lastTx}</td>
-                </tr>
-              ))}
+              {loading ? (
+                <tr><td colSpan="5" className="text-center py-4">Loading...</td></tr>
+              ) : data.length === 0 ? (
+                <tr><td colSpan="5" className="text-center py-4 text-gray-500">No data available.</td></tr>
+              ) : (
+                data.map((row, idx) => {
+                  const percent = row.total_advances > 0 
+                    ? Math.round((row.advance_used / row.total_advances) * 100) 
+                    : 0;
+                  return (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="px-6 py-5 font-medium text-gray-900">{row.customer_name}</td>
+                      <td className="px-6 py-5 font-medium text-gray-900 text-center">₹{parseFloat(row.total_advances).toLocaleString()}</td>
+                      <td className="px-6 py-5 font-medium text-gray-900 text-center">₹{parseFloat(row.advance_used).toLocaleString()}</td>
+                      <td className="px-6 py-5 font-bold text-[#4B5EAA] text-center">₹{parseFloat(row.current_balance).toLocaleString()}</td>
+                      <td className="px-6 py-5">
+                        <div className="flex justify-center items-center gap-3">
+                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                            <div className="bg-[#4B5EAA] h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                          </div>
+                          <span className="text-xs font-bold text-gray-400 w-6">{percent}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
             </tbody>
           </table>
         </div>

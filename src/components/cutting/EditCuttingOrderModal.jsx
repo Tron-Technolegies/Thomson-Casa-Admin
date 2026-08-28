@@ -1,18 +1,62 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiChevronDown } from 'react-icons/fi';
+import { api } from '../../services/api';
 
-export default function EditCuttingOrderModal({ isOpen, onClose, order }) {
+export default function EditCuttingOrderModal({ isOpen, onClose, order, onSuccess }) {
+  const [formData, setFormData] = useState({
+    status: "Pending"
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (order) {
+      setFormData({
+        status: order.status || "Pending"
+      });
+    }
+  }, [order]);
+
   if (!isOpen || !order) return null;
 
-  const handleSubmit = (e) => {
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onClose();
+    setError("");
+    setLoading(true);
+    try {
+      const response = await api.put(`/admin/orders/${order.id}/edit/`, {
+        status: formData.status
+      });
+      if (response.success) {
+        if (onSuccess) onSuccess();
+        onClose();
+      } else {
+        setError(response.message || "Failed to update order.");
+      }
+    } catch (err) {
+      setError(err.message || "An error occurred.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl bg-white shadow-2xl">
+        <div className="border-b border-gray-200 px-8 py-6 flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900">
+            Edit Order Status
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-900 transition">
+            <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="24" width="24" xmlns="http://www.w3.org/2000/svg"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
         <form onSubmit={handleSubmit} className="p-8">
+          {error && <div className="mb-4 text-red-500 text-sm font-semibold">{error}</div>}
           <div className="grid grid-cols-1 gap-y-6">
             
             {/* Order Number */}
@@ -22,7 +66,7 @@ export default function EditCuttingOrderModal({ isOpen, onClose, order }) {
               </label>
               <input
                 type="text"
-                defaultValue={order.order}
+                value={order.order_number || ''}
                 readOnly
                 className="h-13 w-full rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA] bg-gray-50 text-gray-700"
               />
@@ -48,7 +92,7 @@ export default function EditCuttingOrderModal({ isOpen, onClose, order }) {
               </label>
               <input
                 type="text"
-                defaultValue={order.type}
+                value={order.chicken_type || ''}
                 readOnly
                 className="h-13 w-full rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA] bg-gray-50 text-gray-700"
               />
@@ -73,10 +117,15 @@ export default function EditCuttingOrderModal({ isOpen, onClose, order }) {
                 Status
               </label>
               <div className="relative">
-                <select defaultValue={order.status} className="h-13 w-full appearance-none rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA] bg-white">
-                  <option>Pending</option>
-                  <option>Cutting</option>
-                  <option>Ready</option>
+                <select 
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                  className="h-13 w-full appearance-none rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA] bg-white"
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Cutting">Cutting</option>
+                  <option value="Ready">Ready</option>
                 </select>
                 <FiChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500" />
               </div>
@@ -95,9 +144,10 @@ export default function EditCuttingOrderModal({ isOpen, onClose, order }) {
             </button>
             <button
               type="submit"
-              className="w-full md:w-40 rounded-2xl bg-[#4B5EAA] py-3 font-semibold text-white transition hover:bg-[#3d4f92]"
+              disabled={loading}
+              className="w-full md:w-40 rounded-2xl bg-[#4B5EAA] py-3 font-semibold text-white transition hover:bg-[#3d4f92] disabled:opacity-70"
             >
-              Save
+              {loading ? "Saving..." : "Save"}
             </button>
           </div>
         </form>

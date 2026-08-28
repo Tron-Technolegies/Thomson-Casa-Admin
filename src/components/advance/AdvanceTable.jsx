@@ -3,12 +3,6 @@ import { FiDownload } from "react-icons/fi";
 import { FaMoneyBillWave, FaUniversity } from "react-icons/fa";
 import { BiMoney } from "react-icons/bi";
 
-const advanceRecords = [
-  { id: "ADV-0021", customer: "Apex Industries", amount: "₹ 1,50,000", method: "Bank Transfer", reference: "RTGS-20260701-004", date: "01 Jul 2026", note: "Advance for Q3 orders" },
-  { id: "ADV-0020", customer: "Pinnacle Traders", amount: "₹ 2,00,000", method: "Cheque", reference: "CHQ-440012", date: "28 Jun 2026", note: "Pre-delivery advance" },
-  { id: "ADV-0019", customer: "Nexus Solutions", amount: "₹ 1,00,000", method: "UPI", reference: "UPI-8801234500", date: "25 Jun 2026", note: "Project advance" },
-];
-
 const getMethodIcon = (method) => {
   switch (method) {
     case "Bank Transfer": return <FaUniversity className="text-gray-500 mr-2" />;
@@ -18,7 +12,7 @@ const getMethodIcon = (method) => {
   }
 };
 
-export default function AdvanceTable({ onRecordAdvance }) {
+export default function AdvanceTable({ advances = [], loading, onRecordAdvance }) {
   return (
     <div className="bg-white border border-[#00000026] rounded-xl overflow-hidden mt-6">
       <div className="flex justify-between items-center p-6 border-b border-[#00000026]">
@@ -49,22 +43,32 @@ export default function AdvanceTable({ onRecordAdvance }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#00000026]">
-            {advanceRecords.map((row, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
-                <td className="px-6 py-4 font-medium text-gray-900">{row.id}</td>
-                <td className="px-6 py-4 font-medium text-gray-900">{row.customer}</td>
-                <td className="px-6 py-4 font-bold text-gray-900 text-right">{row.amount}</td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center bg-gray-100 px-3 py-1.5 rounded-lg w-fit text-sm font-semibold">
-                    {getMethodIcon(row.method)}
-                    {row.method}
-                  </div>
-                </td>
-                <td className="px-6 py-4">{row.reference}</td>
-                <td className="px-6 py-4">{row.date}</td>
-                <td className="px-6 py-4">{row.note}</td>
+            {loading ? (
+              <tr>
+                <td colSpan="7" className="px-6 py-4 text-center text-gray-500">Loading advances...</td>
               </tr>
-            ))}
+            ) : advances.length === 0 ? (
+              <tr>
+                <td colSpan="7" className="px-6 py-4 text-center text-gray-500">No advances recorded yet.</td>
+              </tr>
+            ) : (
+              advances.map((row, idx) => (
+                <tr key={idx} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 font-medium text-gray-900">{row.id}</td>
+                  <td className="px-6 py-4 font-medium text-gray-900">{row.customer}</td>
+                  <td className="px-6 py-4 font-bold text-gray-900 text-right">₹ {row.amount}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center bg-gray-100 px-3 py-1.5 rounded-lg w-fit text-sm font-semibold">
+                      {getMethodIcon(row.payment_method)}
+                      {row.payment_method}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">{row.reference_no}</td>
+                  <td className="px-6 py-4">{row.date}</td>
+                  <td className="px-6 py-4">{row.note}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

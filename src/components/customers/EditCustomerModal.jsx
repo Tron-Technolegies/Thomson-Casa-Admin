@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { IoClose } from "react-icons/io5";
 import { FiChevronDown } from "react-icons/fi";
 import { api } from "../../services/api";
 
-export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
+export default function EditCustomerModal({ isOpen, onClose, customer, onSuccess }) {
   const [formData, setFormData] = useState({
     customer_name: "",
     company_name: "",
@@ -18,6 +18,22 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (customer) {
+      setFormData({
+        customer_name: customer.customer_name || "",
+        company_name: customer.company_name || "",
+        contact_person: customer.contact_person || "",
+        phone: customer.phone || "",
+        email: customer.email || "",
+        gst_number: customer.gst_number || "",
+        customer_type: customer.customer_type || "regular",
+        status: customer.status || "active",
+        address: customer.address || ""
+      });
+    }
+  }, [customer]);
+
   if (!isOpen) return null;
 
   const handleChange = (e) => {
@@ -29,17 +45,12 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
     setError("");
     setLoading(true);
     try {
-      const response = await api.post("/admin/customers/add/", formData);
+      const response = await api.put(`/admin/customers/${customer.id}/edit/`, formData);
       if (response.success) {
         if (onSuccess) onSuccess();
-        setFormData({
-          customer_name: "", company_name: "", contact_person: "", 
-          phone: "", email: "", gst_number: "", customer_type: "regular", 
-          status: "active", address: ""
-        });
         onClose();
       } else {
-        setError(response.message || "Failed to add customer.");
+        setError(response.message || "Failed to update customer.");
       }
     } catch (err) {
       setError(err.message || "An error occurred.");
@@ -47,6 +58,7 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
       setLoading(false);
     }
   };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
 
@@ -57,7 +69,7 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
         <div className="flex items-center justify-between border-b border-gray-200 px-8 py-6">
 
           <h2 className="text-4xl font-bold text-gray-900">
-            Add New Customer
+            Edit Customer
           </h2>
 
           <button
@@ -73,7 +85,7 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
           onSubmit={handleSubmit}
           className="p-8"
         >
-          {error && <div className="mb-4 text-red-500 text-sm font-semibold">{error}</div>}
+          {error && <p className="mb-4 text-red-500">{error}</p>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
 
             {/* Customer Name */}
@@ -90,7 +102,6 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
                 onChange={handleChange}
                 placeholder="Full Name"
                 className="h-13 w-full rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA]"
-                required
               />
             </div>
 
@@ -108,7 +119,6 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
                 onChange={handleChange}
                 placeholder="Company Pvt Ltd"
                 className="h-13 w-full rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA]"
-                required
               />
             </div>
 
@@ -143,7 +153,6 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
                 onChange={handleChange}
                 placeholder="+91 0000000000"
                 className="h-13 w-full rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA]"
-                required
               />
             </div>
 
@@ -191,14 +200,14 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
               <div className="relative">
 
                 <select 
-                  name="customer_type" 
+                  name="customer_type"
                   value={formData.customer_type}
                   onChange={handleChange}
                   className="h-13 w-full appearance-none rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA]"
                 >
                   <option value="regular">Regular</option>
                   <option value="wholesale">Wholesale</option>
-                  <option value="new_customer">New Customer</option>
+                  <option value="distributor">Distributor</option>
                 </select>
 
                 <FiChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500" />
@@ -217,7 +226,7 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
               <div className="relative">
 
                 <select 
-                  name="status" 
+                  name="status"
                   value={formData.status}
                   onChange={handleChange}
                   className="h-13 w-full appearance-none rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA]"
@@ -241,13 +250,12 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
               </label>
 
               <textarea
+                rows="4"
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
-                rows="4"
                 placeholder="Street address, City, State"
                 className="w-full rounded-2xl border border-gray-300 px-5 py-4 resize-none outline-none focus:border-[#4B5EAA]"
-                required
               />
 
             </div>
@@ -271,7 +279,7 @@ export default function AddCustomerModal({ isOpen, onClose, onSuccess }) {
               disabled={loading}
               className="w-full md:w-44 rounded-2xl bg-[#4B5EAA] py-3 font-semibold text-white transition hover:bg-[#3d4f92] disabled:opacity-70"
             >
-              {loading ? "Saving..." : "Save Customer"}
+              {loading ? "Updating..." : "Update Customer"}
             </button>
 
           </div>

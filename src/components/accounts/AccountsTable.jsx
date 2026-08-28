@@ -1,21 +1,6 @@
 import React from "react";
 import { FiEdit2 } from "react-icons/fi";
 
-const accountsData = [
-  { id: "Inv--9087--34", customer: "Raj Foods Pvt Ltd", date: "2026-10-08", delivery: "2026-10-08", type: "Dressed Chicken", weight: "250 Kg", status: "Delivered", price: "1500" },
-  { id: "Inv--9087--34", customer: "Fresh Mart", date: "2026-10-08", delivery: "2026-10-08", type: "Full Chicken", weight: "150 Kg", status: "Cutting", price: "1500" },
-  { id: "Inv--9087--34", customer: "Splyzone Pvt Ltd", date: "2026-10-08", delivery: "2026-10-08", type: "Dressed Chicken", weight: "150 Kg", status: "Ready", price: "1500" },
-  { id: "Inv--9087--34", customer: "Splyzone Pvt Ltd", date: "2026-10-08", delivery: "2026-10-08", type: "Full Chicken", weight: "250 Kg", status: "Pending", price: "1500" },
-  { id: "Inv--9087--34", customer: "Raj Foods Pvt Ltd", date: "2026-10-08", delivery: "2026-10-08", type: "Dressed Chicken", weight: "150 Kg", status: "Pending", price: "1500" },
-  { id: "Inv--9087--34", customer: "Splyzone Pvt Ltd", date: "2026-10-08", delivery: "2026-10-08", type: "Full Chicken", weight: "150 Kg", status: "Cancelled", price: "1500" },
-  { id: "Inv--9087--34", customer: "Raj Foods Pvt Ltd", date: "2026-10-08", delivery: "2026-10-08", type: "Dressed Chicken", weight: "250 Kg", status: "Delivered", price: "1500" },
-  { id: "Inv--9087--34", customer: "Fresh Mart", date: "2026-10-08", delivery: "2026-10-08", type: "Full Chicken", weight: "150 Kg", status: "Cutting", price: "1500" },
-  { id: "Inv--9087--34", customer: "Splyzone Pvt Ltd", date: "2026-10-08", delivery: "2026-10-08", type: "Dressed Chicken", weight: "150 Kg", status: "Ready", price: "1500" },
-  { id: "Inv--9087--34", customer: "Splyzone Pvt Ltd", date: "2026-10-08", delivery: "2026-10-08", type: "Full Chicken", weight: "250 Kg", status: "Pending", price: "1500" },
-  { id: "Inv--9087--34", customer: "Raj Foods Pvt Ltd", date: "2026-10-08", delivery: "2026-10-08", type: "Dressed Chicken", weight: "150 Kg", status: "Pending", price: "1500" },
-  { id: "Inv--9087--34", customer: "Splyzone Pvt Ltd", date: "2026-10-08", delivery: "2026-10-08", type: "Full Chicken", weight: "150 Kg", status: "Cancelled", price: "1500" },
-];
-
 const getStatusStyle = (status) => {
   switch (status) {
     case "Delivered": return "bg-green-100 text-green-600";
@@ -27,7 +12,7 @@ const getStatusStyle = (status) => {
   }
 };
 
-export default function AccountsTable({ onEdit }) {
+export default function AccountsTable({ orders = [], loading, onEdit }) {
   return (
     <div className="bg-white border border-[#00000026] rounded-xl overflow-hidden mt-6">
       <div className="overflow-x-auto">
@@ -46,30 +31,42 @@ export default function AccountsTable({ onEdit }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#00000026]">
-            {accountsData.map((row, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
-                <td className="px-6 py-4 font-medium text-gray-900">{row.id}</td>
-                <td className="px-6 py-4 font-medium text-gray-900">{row.customer}</td>
-                <td className="px-6 py-4">{row.date}</td>
-                <td className="px-6 py-4">{row.delivery}</td>
-                <td className="px-6 py-4 font-medium text-gray-900">{row.type}</td>
-                <td className="px-6 py-4 font-medium text-gray-900">{row.weight}</td>
-                <td className="px-6 py-4 text-center">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusStyle(row.status)}`}>
-                    {row.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 font-bold text-gray-900">{row.price}</td>
-                <td className="px-6 py-4 text-center">
-                  <button 
-                    onClick={() => onEdit(row)}
-                    className="text-gray-600 hover:text-[#4B5EAA] cursor-pointer transition"
-                  >
-                    <FiEdit2 size={18} />
-                  </button>
-                </td>
+            {loading ? (
+              <tr>
+                <td colSpan="9" className="px-6 py-4 text-center text-gray-500">Loading orders...</td>
               </tr>
-            ))}
+            ) : orders.length === 0 ? (
+              <tr>
+                <td colSpan="9" className="px-6 py-4 text-center text-gray-500">No ready/delivered orders found.</td>
+              </tr>
+            ) : (
+              orders.map((row) => (
+                <tr key={row.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 font-medium text-gray-900">{row.order_number}</td>
+                  <td className="px-6 py-4 font-medium text-gray-900">{row.customer}</td>
+                  <td className="px-6 py-4">{row.created_at ? new Date(row.created_at).toLocaleDateString() : '-'}</td>
+                  <td className="px-6 py-4">{row.delivery_date}</td>
+                  <td className="px-6 py-4 font-medium text-gray-900">{row.chicken_type}</td>
+                  <td className="px-6 py-4 font-medium text-gray-900">{row.weight} Kg</td>
+                  <td className="px-6 py-4 text-center">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusStyle(row.status)}`}>
+                      {row.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 font-bold text-gray-900">
+                    {row.invoice ? `₹ ${row.invoice.total_amount}` : <span className="text-gray-400 font-normal">Unpriced</span>}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <button 
+                      onClick={() => onEdit(row)}
+                      className="text-gray-600 hover:text-[#4B5EAA] cursor-pointer transition"
+                    >
+                      <FiEdit2 size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
