@@ -13,6 +13,21 @@ const getStatusStyle = (status) => {
 };
 
 export default function AccountsTable({ orders = [], loading, onEdit }) {
+  const getDisplayItems = (order) => {
+    return order.items && order.items.length > 0 
+      ? order.items 
+      : [{ chicken_type: order.chicken_type, weight: order.weight }];
+  };
+
+  const getChickenTypes = (items) => {
+    const types = [...new Set(items.map(i => i.chicken_type))].join(' + ');
+    return types;
+  };
+
+  const getTotalWeight = (items) => {
+    return items.reduce((sum, item) => sum + Number(item.weight || 0), 0);
+  };
+
   return (
     <div className="bg-white border border-[#00000026] rounded-xl overflow-hidden mt-6">
       <div className="overflow-x-auto">
@@ -40,14 +55,19 @@ export default function AccountsTable({ orders = [], loading, onEdit }) {
                 <td colSpan="9" className="px-6 py-4 text-center text-gray-500">No ready/delivered orders found.</td>
               </tr>
             ) : (
-              orders.map((row) => (
+              orders.map((row) => {
+                const displayItems = getDisplayItems(row);
+                const types = getChickenTypes(displayItems);
+                const totalWeight = getTotalWeight(displayItems);
+
+                return (
                 <tr key={row.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 font-medium text-gray-900">{row.order_number}</td>
                   <td className="px-6 py-4 font-medium text-gray-900">{row.customer}</td>
                   <td className="px-6 py-4">{row.created_at ? new Date(row.created_at).toLocaleDateString() : '-'}</td>
                   <td className="px-6 py-4">{row.delivery_date}</td>
-                  <td className="px-6 py-4 font-medium text-gray-900">{row.chicken_type}</td>
-                  <td className="px-6 py-4 font-medium text-gray-900">{row.weight} Kg</td>
+                  <td className="px-6 py-4 font-medium text-gray-900">{types}</td>
+                  <td className="px-6 py-4 font-medium text-gray-900">{totalWeight} Kg</td>
                   <td className="px-6 py-4 text-center">
                     <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusStyle(row.status)}`}>
                       {row.status}
@@ -65,7 +85,7 @@ export default function AccountsTable({ orders = [], loading, onEdit }) {
                     </button>
                   </td>
                 </tr>
-              ))
+              )})
             )}
           </tbody>
         </table>

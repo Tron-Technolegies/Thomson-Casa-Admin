@@ -18,6 +18,21 @@ export default function OrderTable({
   orders = [], loading, activeTab, setActiveTab, dateFilter, setDateFilter, onEdit 
 }) {
 
+  const getDisplayItems = (order) => {
+    return order.items && order.items.length > 0 
+      ? order.items 
+      : [{ chicken_type: order.chicken_type, weight: order.weight }];
+  };
+
+  const getChickenTypes = (items) => {
+    const types = [...new Set(items.map(i => i.chicken_type))].join(' + ');
+    return items.length > 1 ? types : types; // Always show types like 'Dressed + Full'
+  };
+
+  const getTotalWeight = (items) => {
+    return items.reduce((sum, item) => sum + Number(item.weight || 0), 0);
+  };
+
   return (
     <div>
       {/* Tabs and Filter */}
@@ -74,14 +89,19 @@ export default function OrderTable({
                   <td colSpan="8" className="px-6 py-4 text-center text-gray-500">No orders found.</td>
                 </tr>
               ) : (
-                orders.map((order) => (
+                orders.map((order) => {
+                  const displayItems = getDisplayItems(order);
+                  const types = getChickenTypes(displayItems);
+                  const totalWeight = getTotalWeight(displayItems);
+                  
+                  return (
                   <tr key={order.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 font-medium text-gray-900">{order.order_number}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{order.customer}</td>
                     <td className="px-6 py-4">{new Date(order.created_at).toLocaleDateString()}</td>
                     <td className="px-6 py-4">{new Date(order.delivery_date).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 font-medium text-gray-900">{order.chicken_type}</td>
-                    <td className="px-6 py-4 font-medium text-gray-900">{order.weight} Kg</td>
+                    <td className="px-6 py-4 font-medium text-gray-900">{types}</td>
+                    <td className="px-6 py-4 font-medium text-gray-900">{totalWeight} Kg</td>
                     <td className="px-6 py-4 text-center">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusStyle(order.status)}`}>
                         {order.status}
@@ -96,7 +116,7 @@ export default function OrderTable({
                       </button>
                     </td>
                   </tr>
-                ))
+                )})
               )}
             </tbody>
           </table>

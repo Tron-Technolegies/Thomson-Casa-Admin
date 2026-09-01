@@ -1,7 +1,13 @@
 import React from "react";
 import { FiTrendingUp, FiFileText, FiDollarSign, FiCreditCard } from "react-icons/fi";
 
-export default function InvoiceStatCards() {
+export default function InvoiceStatCards({ invoices = [] }) {
+  const totalInvoiced = invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+  const totalTax = invoices.reduce((sum, inv) => sum + (inv.tax || 0), 0);
+  const grossTotal = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+  const amountPaid = invoices.reduce((sum, inv) => sum + (inv.advance_used || 0), 0);
+  const clearedCount = invoices.filter(inv => inv.status === "Paid").length;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
       {/* Total Invoiced */}
@@ -15,7 +21,7 @@ export default function InvoiceStatCards() {
           </div>
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">₹ 4,18,500</h3>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">₹ {totalInvoiced.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
           <div className="flex items-center text-green-600 text-xs font-semibold gap-1">
             <FiTrendingUp /> Net amount
           </div>
@@ -33,7 +39,7 @@ export default function InvoiceStatCards() {
           </div>
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">₹ 41,850</h3>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">₹ {totalTax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
           <div className="flex items-center text-gray-500 text-xs font-semibold gap-1">
             GST collected
           </div>
@@ -51,7 +57,7 @@ export default function InvoiceStatCards() {
           </div>
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">₹ 4,60,350</h3>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">₹ {grossTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
           <div className="flex items-center text-green-600 text-xs font-semibold gap-1">
             <FiTrendingUp /> Incl. taxes
           </div>
@@ -69,9 +75,9 @@ export default function InvoiceStatCards() {
           </div>
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">₹ 2,51,350</h3>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">₹ {amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
           <div className="flex items-center text-green-600 text-xs font-semibold gap-1">
-            <FiTrendingUp /> 4 invoices cleared
+            <FiTrendingUp /> {clearedCount} invoices cleared
           </div>
         </div>
       </div>

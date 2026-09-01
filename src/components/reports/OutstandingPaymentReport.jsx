@@ -1,5 +1,6 @@
 import React from "react";
 import { FiDollarSign, FiAlertCircle, FiClock, FiTrendingDown, FiDownload } from "react-icons/fi";
+import { exportTableToPDF } from "../../utils/pdfGenerator";
 
 const paymentData = [
   { id: "INV-2026-0441", customer: "Name", amount: "₹ 4,70,000", date: "01 Jul 2026", overdue: "8 days", status: "Overdue" },
@@ -11,6 +12,14 @@ const paymentData = [
 ];
 
 export default function OutstandingPaymentReport() {
+  const handleDownloadPDF = () => {
+    const headers = ["INVOICE", "CUSTOMER", "AMOUNT", "DUE DATE", "DAYS OVERDUE", "STATUS"];
+    const data = paymentData.map(row => [
+      row.id, row.customer, row.amount, row.date, row.overdue, row.status
+    ]);
+    exportTableToPDF("Outstanding Payment Details", headers, data, "Outstanding_Payment_Report.pdf");
+  };
+
   return (
     <div>
       {/* Stat Cards */}
@@ -54,10 +63,14 @@ export default function OutstandingPaymentReport() {
         <div className="flex justify-between items-center p-6 border-b border-[#00000026]">
           <h2 className="text-lg font-bold text-gray-900">Outstanding Payment Details</h2>
           <div className="flex gap-4">
-            <button className="flex items-center gap-2 bg-green-100 text-green-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-200 transition">
+            <button 
+              onClick={() => alert("Excel download not implemented yet.")}
+              className="flex items-center gap-2 bg-green-100 text-green-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-200 transition cursor-pointer">
               <FiDownload size={16} /> Excel
             </button>
-            <button className="flex items-center gap-2 bg-red-100 text-red-500 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-200 transition">
+            <button 
+              onClick={handleDownloadPDF}
+              className="flex items-center gap-2 bg-red-100 text-red-500 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-200 transition cursor-pointer">
               <FiDownload size={16} /> PDF
             </button>
           </div>

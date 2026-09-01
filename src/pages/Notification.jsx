@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FiShoppingCart, FiCreditCard, FiFileText, FiAlertCircle } from "react-icons/fi";
 import { api } from "../services/api";
+import ConfirmModal from "../components/common/ConfirmModal";
 
 const getIconProps = (type) => {
   switch (type) {
@@ -15,6 +16,7 @@ const getIconProps = (type) => {
 export default function Notification() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
 
   const fetchNotifications = async () => {
     try {
@@ -44,6 +46,17 @@ export default function Notification() {
     }
   };
 
+  const handleClearAll = async () => {
+    try {
+      const res = await api.delete("/admin/notifications/clear/");
+      if (res.success) {
+        fetchNotifications();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
@@ -53,12 +66,20 @@ export default function Notification() {
           <h1 className="text-3xl font-bold text-gray-900 mb-1">Notifications</h1>
           <p className="text-sm text-gray-500 font-semibold">{unreadCount} Unread</p>
         </div>
-        <button 
-          onClick={handleMarkAllRead}
-          className="text-[#4B5EAA] font-semibold text-sm hover:underline"
-        >
-          Mark all read
-        </button>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={handleMarkAllRead}
+            className="text-[#4B5EAA] font-semibold text-sm hover:underline"
+          >
+            Mark all read
+          </button>
+          <button 
+            onClick={() => setIsClearModalOpen(true)}
+            className="text-red-500 font-semibold text-sm hover:underline"
+          >
+            Clear All
+          </button>
+        </div>
       </div>
 
       <div className="bg-white border border-[#00000026] rounded-xl overflow-hidden shadow-sm">
@@ -99,6 +120,16 @@ export default function Notification() {
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={isClearModalOpen}
+        onClose={() => setIsClearModalOpen(false)}
+        onConfirm={handleClearAll}
+        title="Clear All Notifications"
+        message="Are you sure you want to permanently delete all notifications? This action cannot be undone."
+        confirmText="Clear All"
+        isDanger={true}
+      />
     </div>
   );
 }

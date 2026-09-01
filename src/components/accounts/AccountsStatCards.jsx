@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { FiTrendingUp, FiShoppingCart, FiEdit2, FiX } from "react-icons/fi";
 import { api } from "../../services/api";
 
-export default function AccountsStatCards({ dailyPrices = {}, onUpdatePrices }) {
+export default function AccountsStatCards({ orders = [], dailyPrices = {}, selectedDate, onUpdatePrices }) {
   const [isEditing, setIsEditing] = useState(false);
   const [pricesForm, setPricesForm] = useState({
     "Full Chicken": "",
@@ -10,6 +10,9 @@ export default function AccountsStatCards({ dailyPrices = {}, onUpdatePrices }) 
     "Boneless Chicken": ""
   });
   const [loading, setLoading] = useState(false);
+
+  const totalPurchases = orders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0);
+  const totalOrders = orders.length;
 
   const handleEditClick = () => {
     setPricesForm({
@@ -24,7 +27,10 @@ export default function AccountsStatCards({ dailyPrices = {}, onUpdatePrices }) 
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await api.post("/admin/daily-prices/update/", { prices: pricesForm });
+      const res = await api.post("/admin/daily-prices/update/", { 
+        prices: pricesForm,
+        date: selectedDate
+      });
       if (res.success && onUpdatePrices) {
         onUpdatePrices();
       }
@@ -50,9 +56,9 @@ export default function AccountsStatCards({ dailyPrices = {}, onUpdatePrices }) 
             </div>
           </div>
           <div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-2">₹ 1,46,40,000</h3>
+            <h3 className="text-3xl font-bold text-gray-900 mb-2">₹ {totalPurchases.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
             <div className="flex items-center text-green-600 text-sm font-semibold gap-1">
-              <FiTrendingUp /> +9.2% vs last month
+              <FiTrendingUp /> Total pending billing amount
             </div>
           </div>
         </div>
@@ -68,9 +74,9 @@ export default function AccountsStatCards({ dailyPrices = {}, onUpdatePrices }) 
             </div>
           </div>
           <div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-2">379</h3>
+            <h3 className="text-3xl font-bold text-gray-900 mb-2">{totalOrders}</h3>
             <div className="flex items-center text-green-600 text-sm font-semibold gap-1">
-              <FiTrendingUp /> +8.1% vs last period
+              <FiTrendingUp /> Orders ready to bill
             </div>
           </div>
         </div>

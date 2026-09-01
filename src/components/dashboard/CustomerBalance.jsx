@@ -11,7 +11,7 @@ export default function CustomerBalance() {
       try {
         const res = await api.get("/admin/dashboard/stats/");
         if (res.success) {
-          setBalance(res.outstanding_balance || 0);
+          setBalance(res.outstanding || 0);
         }
       } catch (err) {
         console.error(err);

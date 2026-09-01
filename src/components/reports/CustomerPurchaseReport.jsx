@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FiTrendingUp, FiDollarSign, FiShoppingCart, FiAlertCircle, FiDownload } from "react-icons/fi";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { api } from "../../services/api";
+import { exportTableToPDF } from "../../utils/pdfGenerator";
 
 export default function CustomerPurchaseReport() {
   const [customers, setCustomers] = useState([]);
@@ -31,6 +32,18 @@ export default function CustomerPurchaseReport() {
     name: c.customer.substring(0, 15) + (c.customer.length > 15 ? '...' : ''),
     uv: c.total_spent
   })).sort((a, b) => b.uv - a.uv).slice(0, 5);
+
+  const handleDownloadPDF = () => {
+    const headers = ["CUSTOMER NAME", "PHONE NUMBER", "TOTAL ORDERS", "TOTAL WEIGHT", "TOTAL SPENT"];
+    const data = customers.map(c => [
+      c.customer,
+      c.phone,
+      c.total_orders,
+      `${c.total_weight} kg`,
+      `Rs. ${c.total_spent.toLocaleString()}`
+    ]);
+    exportTableToPDF("Customer Purchase Summary", headers, data, "Customer_Purchase_Report.pdf");
+  };
 
   return (
     <div>
@@ -76,10 +89,10 @@ export default function CustomerPurchaseReport() {
           <h2 className="text-lg font-bold text-gray-900">Customer Purchase Summary</h2>
           <div className="flex gap-4">
             <button 
-            onClick={() => window.print()}
-            className="flex items-center gap-2 bg-green-100 text-green-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-200 transition">
-            <FiDownload size={16} /> Download Report
-          </button>
+              onClick={handleDownloadPDF}
+              className="flex items-center gap-2 bg-red-100 text-red-500 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-200 transition cursor-pointer">
+              <FiDownload size={16} /> Download PDF
+            </button>
           </div>
         </div>
         <div className="overflow-x-auto">

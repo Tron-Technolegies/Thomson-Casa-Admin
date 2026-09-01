@@ -49,13 +49,16 @@ export default function CuttingTeam() {
     <div className="max-w-[1600px] mx-auto pb-10">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Cutting Team</h1>
-        <div className="flex items-center gap-2 bg-white border border-[#00000026] rounded-full px-4 py-2">
-          <input 
-            type="date"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="text-sm font-semibold text-gray-700 outline-none"
-          />
+        <div className="flex gap-4">
+          <div className="flex items-center gap-2 bg-[#F7F7F7] border border-[#00000026] rounded-xl px-4 py-2">
+            <FiCalendar className="text-gray-500" />
+            <input 
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="bg-transparent text-sm font-semibold text-gray-700 outline-none cursor-pointer"
+            />
+          </div>
         </div>
       </div>
 

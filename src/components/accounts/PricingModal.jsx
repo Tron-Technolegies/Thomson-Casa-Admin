@@ -3,162 +3,258 @@ import { FiChevronDown, FiX } from 'react-icons/fi';
 import { api } from '../../services/api';
 
 export default function PricingModal({ isOpen, onClose, account, dailyPrices = {}, onSuccess }) {
-  const [sellingPrice, setSellingPrice] = useState("");
-  const [gstAmount, setGstAmount] = useState("");
+  const [itemPrices, setItemPrices] = useState({});
+  const [gstType, setGstType] = useState("fixed");
+  const [gstInput, setGstInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const marketPrice = account ? dailyPrices[account.chicken_type] || 0 : 0;
-
   useEffect(() => {
-    if (account) {
-      if (account.invoice) {
-        setSellingPrice(account.invoice.selling_price_per_kg);
-        setGstAmount(account.invoice.gst_amount);
-      } else {
-        setSellingPrice("");
-        setGstAmount("");
-      }
+    if (account && account.items) {
+      const initialPrices = {};
+      account.items.forEach(item => {
+        initialPrices[item.id] = item.price_per_kg || "";
+      });
+      setItemPrices(initialPrices);
+      setGstType("fixed");
+      setGstInput("");
       setError("");
     }
   }, [account]);
 
   if (!isOpen || !account) return null;
 
-  const parsedSellingPrice = parseFloat(sellingPrice) || 0;
-  const parsedGst = parseFloat(gstAmount) || 0;
-  const totalAmount = (account.weight * parsedSellingPrice) + parsedGst;
+  const handlePriceChange = (itemId, value) => {
+    setItemPrices(prev => ({ ...prev, [itemId]: value }));
+  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!sellingPrice) {
-      setError("Selling price is required.");
-      return;
+  const getSubtotal = (item) => {
+    const price = parseFloat(itemPrices[item.id]) || 0;
+    const weight = parseFloat(item.weight) || 0;
+    return price * weight;
+  };
+
+  const itemsTotal = account?.items?.reduce((sum, item) => sum + getSubtotal(item), 0) || 0;
+  
+  let parsedGstAmount = 0;
+  const gInput = parseFloat(gstInput) || 0;
+  if (gstType === "percentage") {
+      parsedGstAmount = itemsTotal * (gInput / 100);
+  } else {
+      parsedGstAmount = gInput;
+  }
+  
+  const totalAmount = itemsTotal + parsedGstAmount;
+
+  const handleSavePricing = async () => {
+    if (!account.items || account.items.length === 0) {
+        setError("No items found in this order.");
+        return false;
+    }
+
+    const itemsPayload = account.items.map(item => ({
+      id: item.id,
+      price_per_kg: parseFloat(itemPrices[item.id])
+    }));
+    
+    if (itemsPayload.some(i => isNaN(i.price_per_kg))) {
+      setError("Please enter a valid price for all items.");
+      return false;
     }
 
     setLoading(true);
     setError("");
 
     try {
-      const payload = {
-        order_id: account.id,
-        selling_price_per_kg: parsedSellingPrice,
-        gst_amount: parsedGst,
-        total_amount: totalAmount
-      };
-
-      const res = await api.post("/admin/invoices/create/", payload);
+      const payload = { items: itemsPayload };
+      const res = await api.post(`/admin/orders/${account.id}/pricing/`, payload);
       if (res.success) {
-        if (onSuccess) onSuccess();
-        onClose();
+        return true;
       } else {
-        setError(res.message || "Failed to save invoice.");
+        setError(res.message || "Failed to save pricing.");
+        return false;
       }
     } catch (err) {
-      setError(err.message || "An error occurred.");
+      setError(err.message || "An error occurred while saving pricing.");
+      return false;
     } finally {
       setLoading(false);
     }
   };
 
+  const onSaveDraft = async (e) => {
+      e.preventDefault();
+      const success = await handleSavePricing();
+      if (success) {
+          if (onSuccess) onSuccess();
+          onClose();
+      }
+  };
+
+  const onGenerateInvoice = async (e) => {
+      e.preventDefault();
+      
+      const priceSaved = await handleSavePricing();
+      if (!priceSaved) return;
+
+      setLoading(true);
+      setError("");
+
+      try {
+          const payload = {
+              order_id: account.id,
+              gst_type: gstType,
+              gst_input: parseFloat(gstInput) || 0
+          };
+          const res = await api.post(`/admin/invoices/create/`, payload);
+          if (res.success) {
+              if (onSuccess) onSuccess();
+              onClose();
+          } else {
+              setError(res.message || "Failed to generate invoice.");
+          }
+      } catch (err) {
+          setError(err.message || "An error occurred while generating the invoice.");
+      } finally {
+          setLoading(false);
+      }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl bg-white shadow-2xl">
+      <div className="relative w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-3xl bg-white shadow-2xl">
         {/* Header */}
         <div className="border-b border-gray-200 px-8 py-6 flex justify-between items-center">
           <h2 className="text-3xl font-bold text-gray-900">
-            Pricing
+            Order Pricing & Invoice Generation
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-900 transition">
             <FiX size={24} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8">
+        <div className="p-8">
           {error && <div className="mb-4 text-red-500 text-sm font-semibold">{error}</div>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
             
             {/* Customer Name */}
-            <div className="md:col-span-2">
+            <div className="md:col-span-1">
               <label className="mb-2 block text-sm font-medium text-gray-600">
                 Customer
               </label>
               <input
                 type="text"
-                defaultValue={account.customer || "Sanjay Das"}
+                defaultValue={account.customer || ""}
                 readOnly
-                className="h-13 w-full rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA]"
+                className="h-13 w-full rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA] bg-gray-50"
               />
             </div>
-
-            {/* Chicken Type */}
-            <div>
+            
+            <div className="md:col-span-1">
               <label className="mb-2 block text-sm font-medium text-gray-600">
-                Chicken Type
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={account.chicken_type || ""}
-                  readOnly
-                  className="h-13 w-full rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA] bg-gray-50"
-                />
-              </div>
-            </div>
-
-            {/* Weight */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-600">
-                Weight
+                Order Number
               </label>
               <input
                 type="text"
-                defaultValue={account.weight || ""}
+                defaultValue={account.order_number || ""}
                 readOnly
                 className="h-13 w-full rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA] bg-gray-50"
               />
             </div>
 
-            {/* Selling Price */}
-            <div className="md:col-span-2 relative">
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-gray-600">
-                  Selling Price (₹/kg)
-                </label>
-                <span className="text-xs text-gray-500 font-medium">Market: <span className="text-orange-500 font-bold">₹{marketPrice || "---"}</span></span>
-              </div>
-              <div className="flex gap-4">
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={sellingPrice}
-                  onChange={(e) => setSellingPrice(e.target.value)}
-                  placeholder="₹----"
-                  className="h-13 flex-1 rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA]"
-                />
+            {/* Order Items Table */}
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-medium text-gray-600">
+                Item Pricing
+              </label>
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-100 text-gray-500 uppercase text-xs font-semibold border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-3">Item Type</th>
+                      <th className="px-4 py-3 text-right">Weight (Kg)</th>
+                      <th className="px-4 py-3 text-right">Market Price</th>
+                      <th className="px-4 py-3">Selling Price (₹)</th>
+                      <th className="px-4 py-3 text-right">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {account.items && account.items.map(item => {
+                      const marketPrice = dailyPrices[item.chicken_type] || 0;
+                      return (
+                        <tr key={item.id} className="bg-white hover:bg-gray-50 transition">
+                          <td className="px-4 py-3 font-medium text-gray-800">{item.chicken_type}</td>
+                          <td className="px-4 py-3 text-right text-gray-600">{item.weight}</td>
+                          <td className="px-4 py-3 text-right text-orange-500 font-semibold">₹{marketPrice || "---"}</td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              required
+                              value={itemPrices[item.id] !== undefined ? itemPrices[item.id] : ""}
+                              onChange={(e) => handlePriceChange(item.id, e.target.value)}
+                              placeholder="₹----"
+                              className="h-10 w-full min-w-[100px] rounded-xl border border-gray-300 px-3 outline-none focus:border-[#4B5EAA]"
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-gray-800">
+                            ₹{getSubtotal(item).toFixed(2)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot className="bg-gray-50 border-t border-gray-200">
+                      <tr>
+                          <td colSpan="4" className="px-4 py-3 text-right font-bold text-gray-700">Items Total:</td>
+                          <td className="px-4 py-3 text-right font-bold text-gray-900">₹{itemsTotal.toFixed(2)}</td>
+                      </tr>
+                  </tfoot>
+                </table>
               </div>
             </div>
 
-            {/* GST */}
-            <div>
+            {/* GST Config */}
+            <div className="md:col-span-1">
               <label className="mb-2 block text-sm font-medium text-gray-600">
-                GST Amount (₹)
+                GST Type
+              </label>
+              <div className="relative">
+                <select
+                  value={gstType}
+                  onChange={(e) => setGstType(e.target.value)}
+                  className="h-13 w-full appearance-none rounded-2xl border border-gray-300 bg-white px-5 pr-10 outline-none focus:border-[#4B5EAA]"
+                >
+                  <option value="fixed">Fixed Amount</option>
+                  <option value="percentage">Percentage (%)</option>
+                </select>
+                <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <FiChevronDown size={20} />
+                </div>
+              </div>
+            </div>
+
+            <div className="md:col-span-1">
+              <label className="mb-2 block text-sm font-medium text-gray-600">
+                GST Value {gstType === "percentage" ? "(%)" : "(₹)"}
               </label>
               <input
                 type="number"
                 step="0.01"
-                value={gstAmount}
-                onChange={(e) => setGstAmount(e.target.value)}
+                min="0"
+                value={gstInput}
+                onChange={(e) => setGstInput(e.target.value)}
                 placeholder="0.00"
                 className="h-13 w-full rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA]"
               />
+              <p className="text-xs text-gray-400 mt-1">Calculated GST: ₹{parsedGstAmount.toFixed(2)}</p>
             </div>
 
             {/* Total */}
-            <div>
+            <div className="md:col-span-2">
               <label className="mb-2 block text-sm font-medium text-gray-600">
-                Total Amount (₹)
+                Total Invoice Amount (₹)
               </label>
               <input
                 type="text"
@@ -171,16 +267,23 @@ export default function PricingModal({ isOpen, onClose, account, dailyPrices = {
           </div>
 
           {/* Footer */}
-          <div className="mt-10">
+          <div className="mt-10 flex gap-4">
             <button
-              type="submit"
+              onClick={onSaveDraft}
               disabled={loading}
-              className="w-full rounded-2xl bg-[#4B5EAA] py-4 font-semibold text-white transition hover:bg-[#3d4f92] disabled:opacity-70"
+              className="flex-1 rounded-2xl border border-gray-300 bg-white py-4 font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-70"
             >
-              {loading ? "Saving..." : account.invoice ? "Update Invoice" : "Save Invoice"}
+              {loading ? "Processing..." : "Save Draft Pricing"}
+            </button>
+            <button
+              onClick={onGenerateInvoice}
+              disabled={loading}
+              className="flex-1 rounded-2xl bg-[#4B5EAA] py-4 font-semibold text-white transition hover:bg-[#3d4f92] disabled:opacity-70"
+            >
+              {loading ? "Processing..." : "Generate Invoice"}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

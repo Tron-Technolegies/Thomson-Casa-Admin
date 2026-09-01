@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiShoppingCart, FiAlertCircle, FiDownload } from "react-icons/fi";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { api } from "../../services/api";
+import { exportTableToPDF } from "../../utils/pdfGenerator";
 
 export default function SalesReports() {
   const [stats, setStats] = useState({ revenue: 0, orders: 0 });
@@ -34,6 +35,17 @@ export default function SalesReports() {
     };
     fetchData();
   }, []);
+
+  const handleDownloadPDF = () => {
+    const headers = ["DAY", "REVENUE", "ORDERS", "AVG REVENUE"];
+    const data = chartData.map(row => [
+      row.name,
+      `Rs. ${row.revenue.toLocaleString()}`,
+      row.orders,
+      `Rs. ${row.orders > 0 ? (row.revenue / row.orders).toFixed(0) : 0}`
+    ]);
+    exportTableToPDF("Sales Report", headers, data, "Sales_Report.pdf");
+  };
 
   return (
     <div>
@@ -116,13 +128,13 @@ export default function SalesReports() {
           <h2 className="text-lg font-bold text-gray-900">Recent Transactions</h2>
           <div className="flex gap-4">
             <button 
-              onClick={() => window.print()}
-              className="flex items-center gap-2 bg-green-100 text-green-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-200 transition">
+              onClick={() => alert("Excel download not implemented yet.")}
+              className="flex items-center gap-2 bg-green-100 text-green-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-200 transition cursor-pointer">
               <FiDownload size={16} /> Excel
             </button>
             <button 
-              onClick={() => window.print()}
-              className="flex items-center gap-2 bg-red-100 text-red-500 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-200 transition">
+              onClick={handleDownloadPDF}
+              className="flex items-center gap-2 bg-red-100 text-red-500 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-200 transition cursor-pointer">
               <FiDownload size={16} /> PDF
             </button>
           </div>

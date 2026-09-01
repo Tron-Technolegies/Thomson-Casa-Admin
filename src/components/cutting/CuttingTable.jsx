@@ -11,6 +11,21 @@ const getStatusStyle = (status) => {
 };
 
 export default function CuttingTable({ orders = [], loading, onEdit }) {
+  const getDisplayItems = (order) => {
+    return order.items && order.items.length > 0 
+      ? order.items 
+      : [{ chicken_type: order.chicken_type, weight: order.weight }];
+  };
+
+  const getChickenTypes = (items) => {
+    const types = [...new Set(items.map(i => i.chicken_type))].join(' + ');
+    return types;
+  };
+
+  const getTotalWeight = (items) => {
+    return items.reduce((sum, item) => sum + Number(item.weight || 0), 0);
+  };
+
   return (
     <div className="bg-white border border-[#00000026] rounded-xl overflow-hidden mt-6">
       <div className="overflow-x-auto">
@@ -35,12 +50,17 @@ export default function CuttingTable({ orders = [], loading, onEdit }) {
                 <td colSpan="6" className="px-6 py-4 text-center text-gray-500">No orders found.</td>
               </tr>
             ) : (
-              orders.map((order) => (
+              orders.map((order) => {
+                const displayItems = getDisplayItems(order);
+                const types = getChickenTypes(displayItems);
+                const totalWeight = getTotalWeight(displayItems);
+
+                return (
                 <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 font-medium text-gray-900">{order.order_number}</td>
                   <td className="px-6 py-4 font-medium text-gray-900">{order.customer}</td>
-                  <td className="px-6 py-4 font-medium text-gray-900">{order.chicken_type}</td>
-                  <td className="px-6 py-4 font-medium text-gray-900">{order.weight} Kg</td>
+                  <td className="px-6 py-4 font-medium text-gray-900">{types}</td>
+                  <td className="px-6 py-4 font-medium text-gray-900">{totalWeight} Kg</td>
                   <td className="px-6 py-4 text-center">
                     <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusStyle(order.status)}`}>
                       {order.status}
@@ -55,7 +75,7 @@ export default function CuttingTable({ orders = [], loading, onEdit }) {
                     </button>
                   </td>
                 </tr>
-              ))
+              )})
             )}
           </tbody>
         </table>

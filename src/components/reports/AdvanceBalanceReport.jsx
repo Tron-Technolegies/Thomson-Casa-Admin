@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FiTrendingUp, FiCreditCard, FiShoppingCart, FiDownload } from "react-icons/fi";
 import { MdOutlineAccountBalanceWallet } from "react-icons/md";
 import { api } from "../../services/api";
+import { exportTableToPDF } from "../../utils/pdfGenerator";
 
 export default function AdvanceBalanceReport() {
   const [data, setData] = useState([]);
@@ -26,6 +27,23 @@ export default function AdvanceBalanceReport() {
   const totalReceived = data.reduce((sum, item) => sum + parseFloat(item.total_advances || 0), 0);
   const totalConsumed = data.reduce((sum, item) => sum + parseFloat(item.advance_used || 0), 0);
   const totalBalance = data.reduce((sum, item) => sum + parseFloat(item.current_balance || 0), 0);
+
+  const handleDownloadPDF = () => {
+    const headers = ["CUSTOMER", "ADVANCE RECEIVED", "CONSUMED", "BALANCE", "UTILIZATION"];
+    const pdfData = data.map(row => {
+      const percent = row.total_advances > 0 
+        ? Math.round((row.advance_used / row.total_advances) * 100) 
+        : 0;
+      return [
+        row.customer_name,
+        `Rs. ${parseFloat(row.total_advances).toLocaleString()}`,
+        `Rs. ${parseFloat(row.advance_used).toLocaleString()}`,
+        `Rs. ${parseFloat(row.current_balance).toLocaleString()}`,
+        `${percent}%`
+      ];
+    });
+    exportTableToPDF("Advance Balance Report", headers, pdfData, "Advance_Balance_Report.pdf");
+  };
 
   return (
     <div>
@@ -70,8 +88,10 @@ export default function AdvanceBalanceReport() {
         <div className="flex justify-between items-center p-6 border-b border-[#00000026]">
           <h2 className="text-lg font-bold text-gray-900">Advance Balance Details</h2>
           <div className="flex gap-4">
-            <button onClick={() => window.print()} className="flex items-center gap-2 bg-green-100 text-green-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-200 transition">
-              <FiDownload size={16} /> Download Report
+            <button 
+              onClick={handleDownloadPDF}
+              className="flex items-center gap-2 bg-red-100 text-red-500 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-200 transition cursor-pointer">
+              <FiDownload size={16} /> Download PDF
             </button>
           </div>
         </div>

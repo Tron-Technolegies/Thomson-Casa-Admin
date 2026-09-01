@@ -85,30 +85,36 @@ export default function EditCuttingOrderModal({ isOpen, onClose, order, onSucces
               />
             </div>
 
-            {/* Chicken Type */}
-            <div>
+            {/* Order Items */}
+            <div className="md:col-span-1">
               <label className="mb-2 block text-sm font-medium text-gray-600">
-                Chicken Type
+                Order Items
               </label>
-              <input
-                type="text"
-                value={order.chicken_type || ''}
-                readOnly
-                className="h-13 w-full rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA] bg-gray-50 text-gray-700"
-              />
-            </div>
-
-            {/* Weight */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-600">
-                Weight
-              </label>
-              <input
-                type="text"
-                defaultValue={order.weight}
-                readOnly
-                className="h-13 w-full rounded-2xl border border-gray-300 px-5 outline-none focus:border-[#4B5EAA] bg-gray-50 text-gray-700"
-              />
+              <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
+                <table className="w-full text-left text-sm text-gray-700">
+                  <thead className="bg-gray-100 text-xs font-semibold text-gray-500 uppercase border-b border-gray-200">
+                    <tr>
+                      <th className="px-5 py-3">Chicken Type</th>
+                      <th className="px-5 py-3">Weight (Kg)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {order.items && order.items.length > 0 ? (
+                      order.items.map((item, idx) => (
+                        <tr key={idx}>
+                          <td className="px-5 py-3 font-medium">{item.chicken_type}</td>
+                          <td className="px-5 py-3">{item.weight}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td className="px-5 py-3 font-medium">{order.chicken_type}</td>
+                        <td className="px-5 py-3">{order.weight}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Status */}

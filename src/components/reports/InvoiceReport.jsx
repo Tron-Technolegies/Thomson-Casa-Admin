@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FiTrendingUp, FiFileText, FiDollarSign, FiCreditCard, FiDownload } from "react-icons/fi";
 import { api } from "../../services/api";
+import { exportTableToPDF } from "../../utils/pdfGenerator";
 
 export default function InvoiceReport() {
   const [data, setData] = useState([]);
@@ -28,6 +29,20 @@ export default function InvoiceReport() {
   
   const paidInvoices = data.filter(i => i.status === 'Paid');
   const amountPaid = paidInvoices.reduce((sum, item) => sum + parseFloat(item.total || 0), 0);
+
+  const handleDownload = () => {
+    const headers = ["INVOICE NO", "CUSTOMER", "DATE", "AMOUNT", "TAX", "TOTAL", "STATUS"];
+    const tableData = data.map(row => [
+      row.id,
+      row.customer,
+      row.date,
+      `Rs. ${row.amount.toLocaleString()}`,
+      `Rs. ${row.tax.toLocaleString()}`,
+      `Rs. ${row.total.toLocaleString()}`,
+      row.status
+    ]);
+    exportTableToPDF("Invoice Register Report", headers, tableData, "Invoice_Report.pdf");
+  };
 
   return (
     <div>
@@ -83,8 +98,8 @@ export default function InvoiceReport() {
         <div className="flex justify-between items-center p-6 border-b border-[#00000026]">
           <h2 className="text-lg font-bold text-gray-900">Invoice Register</h2>
           <div className="flex gap-4">
-            <button onClick={() => window.print()} className="flex items-center gap-2 bg-red-100 text-red-500 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-200 transition">
-              <FiDownload size={16} /> Download Report
+            <button onClick={handleDownload} className="flex items-center gap-2 bg-red-100 text-red-500 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-200 transition cursor-pointer">
+              <FiDownload size={16} /> Download PDF
             </button>
           </div>
         </div>

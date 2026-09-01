@@ -1,5 +1,5 @@
 import React from "react";
-import { FiDownload } from "react-icons/fi";
+import { FiEye } from "react-icons/fi";
 
 const getStatusStyle = (status) => {
   switch (status) {
@@ -59,7 +59,7 @@ export default function InvoiceTable({ invoices = [], loading, onOpenModal }) {
                       onClick={() => onOpenModal(row)}
                       className="flex items-center gap-2 bg-[#4B5EAA] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#3d4f92] transition mx-auto cursor-pointer"
                     >
-                      <FiDownload size={14} /> PDF
+                      <FiEye size={14} /> View
                     </button>
                   </td>
                 </tr>
