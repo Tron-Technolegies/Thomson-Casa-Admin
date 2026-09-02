@@ -3,15 +3,19 @@ import { FiTrendingUp, FiCreditCard, FiShoppingCart, FiDownload } from "react-ic
 import { MdOutlineAccountBalanceWallet } from "react-icons/md";
 import { api } from "../../services/api";
 import { exportTableToPDF } from "../../utils/pdfGenerator";
+import Pagination from "../common/Pagination";
 
-export default function AdvanceBalanceReport() {
+export default function AdvanceBalanceReport({ period = "Daily" }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchBalances = async () => {
       try {
-        const res = await api.get("/admin/advances/balance/");
+        const res = await api.get(`/admin/advances/balance/?period=${period}`);
         if (res.success) {
           setData(res.balances || []);
         }
@@ -22,23 +26,44 @@ export default function AdvanceBalanceReport() {
       }
     };
     fetchBalances();
-  }, []);
+  }, [period]);
 
-  const totalReceived = data.reduce((sum, item) => sum + parseFloat(item.total_advances || 0), 0);
-  const totalConsumed = data.reduce((sum, item) => sum + parseFloat(item.advance_used || 0), 0);
-  const totalBalance = data.reduce((sum, item) => sum + parseFloat(item.current_balance || 0), 0);
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedData = [...data].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.ceil(sortedData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentData = sortedData.slice(startIndex, startIndex + itemsPerPage);
+
+  const totalReceived = data.reduce((sum, item) => sum + parseFloat(item.received || 0), 0);
+  const totalConsumed = data.reduce((sum, item) => sum + parseFloat(item.consumed || 0), 0);
+  const totalBalance = data.reduce((sum, item) => sum + parseFloat(item.balance || 0), 0);
 
   const handleDownloadPDF = () => {
     const headers = ["CUSTOMER", "ADVANCE RECEIVED", "CONSUMED", "BALANCE", "UTILIZATION"];
     const pdfData = data.map(row => {
-      const percent = row.total_advances > 0 
-        ? Math.round((row.advance_used / row.total_advances) * 100) 
+      const percent = row.received > 0 
+        ? Math.round((row.consumed / row.received) * 100) 
         : 0;
       return [
         row.customer_name,
-        `Rs. ${parseFloat(row.total_advances).toLocaleString()}`,
-        `Rs. ${parseFloat(row.advance_used).toLocaleString()}`,
-        `Rs. ${parseFloat(row.current_balance).toLocaleString()}`,
+        `Rs. ${parseFloat(row.received).toLocaleString()}`,
+        `Rs. ${parseFloat(row.consumed).toLocaleString()}`,
+        `Rs. ${parseFloat(row.balance).toLocaleString()}`,
         `${percent}%`
       ];
     });
@@ -99,10 +124,10 @@ export default function AdvanceBalanceReport() {
           <table className="w-full text-left text-sm text-gray-600">
             <thead className="bg-[#F8F9FB] text-xs uppercase text-gray-400 font-bold border-b border-[#00000026]">
               <tr>
-                <th className="px-6 py-4">CUSTOMER</th>
-                <th className="px-6 py-4 text-center">ADVANCE RECEIVED</th>
-                <th className="px-6 py-4 text-center">CONSUMED</th>
-                <th className="px-6 py-4 text-center">BALANCE</th>
+                <th className="px-6 py-4 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('customer_name')}>CUSTOMER</th>
+                <th className="px-6 py-4 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('received')}>ADVANCE RECEIVED</th>
+                <th className="px-6 py-4 text-center cursor-pointer hover:bg-gray-100" onClick={() => handleSort('consumed')}>CONSUMED</th>
+                <th className="px-6 py-4 text-center cursor-pointer hover:bg-gray-100" onClick={() => handleSort('balance')}>BALANCE</th>
                 <th className="px-6 py-4 text-center">UTILIZATION</th>
               </tr>
             </thead>
@@ -112,22 +137,31 @@ export default function AdvanceBalanceReport() {
               ) : data.length === 0 ? (
                 <tr><td colSpan="5" className="text-center py-4 text-gray-500">No data available.</td></tr>
               ) : (
-                data.map((row, idx) => {
-                  const percent = row.total_advances > 0 
-                    ? Math.round((row.advance_used / row.total_advances) * 100) 
+                currentData.map((row, idx) => {
+                  const percent = row.received > 0 
+                    ? Math.round((row.consumed / row.received) * 100) 
                     : 0;
                   return (
                     <tr key={idx} className="hover:bg-gray-50">
                       <td className="px-6 py-5 font-medium text-gray-900">{row.customer_name}</td>
-                      <td className="px-6 py-5 font-medium text-gray-900 text-center">₹{parseFloat(row.total_advances).toLocaleString()}</td>
-                      <td className="px-6 py-5 font-medium text-gray-900 text-center">₹{parseFloat(row.advance_used).toLocaleString()}</td>
-                      <td className="px-6 py-5 font-bold text-[#4B5EAA] text-center">₹{parseFloat(row.current_balance).toLocaleString()}</td>
-                      <td className="px-6 py-5">
+                      <td className="px-6 py-5 font-medium text-gray-900 text-center">₹{parseFloat(row.received).toLocaleString()}</td>
+                      <td className="px-6 py-5 font-medium text-gray-900 text-center">₹{parseFloat(row.consumed).toLocaleString()}</td>
+                      <td className="px-6 py-5 font-bold text-[#4B5EAA] text-center">₹{parseFloat(row.balance).toLocaleString()}</td>
+                      <td className="px-6 py-5 w-48">
                         <div className="flex justify-center items-center gap-3">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div className="bg-[#4B5EAA] h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                percent >= 90
+                                  ? "bg-red-500"
+                                  : percent >= 70
+                                    ? "bg-orange-500"
+                                    : "bg-green-500"
+                              }`}
+                              style={{ width: `${Math.min(percent, 100)}%` }} 
+                            />
                           </div>
-                          <span className="text-xs font-bold text-gray-400 w-6">{percent}%</span>
+                          <span className="text-xs font-bold text-gray-400 min-w-[30px]">{percent}%</span>
                         </div>
                       </td>
                     </tr>
@@ -137,6 +171,13 @@ export default function AdvanceBalanceReport() {
             </tbody>
           </table>
         </div>
+        {!loading && data.length > 0 && (
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
     </div>
   );

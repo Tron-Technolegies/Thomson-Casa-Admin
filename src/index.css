@@ -1,1 +1,24 @@
 @import "tailwindcss";
+
+@media print {
+  body {
+    background-color: white !important;
+  }
+  aside, nav, button {
+    display: none !important;
+  }
+  main, .lg\:ml-64 {
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  .overflow-x-auto, .overflow-y-auto, .overflow-hidden {
+    overflow: visible !important;
+  }
+  .shadow-sm, .shadow-md, .shadow-lg {
+    box-shadow: none !important;
+  }
+  .border, .border-t, .border-b, .border-l, .border-r {
+    border-color: #e5e7eb !important;
+  }
+}

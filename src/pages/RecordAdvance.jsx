@@ -41,9 +41,9 @@ export default function RecordAdvance() {
 
   return (
     <div className="max-w-[1600px] mx-auto pb-10">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Record Advance</h1>
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex items-center gap-2 bg-[#F7F7F7] border border-[#00000026] rounded-xl px-4 py-2">
             <FiCalendar className="text-gray-500" />
             <input 
@@ -60,9 +60,6 @@ export default function RecordAdvance() {
               className="bg-transparent text-sm font-semibold text-gray-700 outline-none cursor-pointer" 
             />
           </div>
-          <button className="flex items-center gap-2 bg-[#F7F7F7] border border-[#00000026] rounded-xl px-4 py-2 text-gray-700 font-semibold hover:bg-gray-100 transition">
-            <FiFilter /> Filter
-          </button>
         </div>
       </div>
 

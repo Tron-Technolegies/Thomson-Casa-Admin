@@ -50,9 +50,9 @@ export default function CustomerPreviewModal({ isOpen, onClose, customer }) {
             <button className="flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
               <FiDownload /> PDF
             </button>
-            <button className="flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            {/* <button className="flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
               <FiPrinter /> Print
-            </button>
+            </button> */}
             <button className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-100">
               <FiShare2 /> Share
             </button>

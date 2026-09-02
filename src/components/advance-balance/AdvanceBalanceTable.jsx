@@ -1,16 +1,44 @@
-import React from "react";
+import React, { useState } from "react";
 import { FiDownload, FiPrinter } from "react-icons/fi";
+import { exportTableToPDF } from "../../utils/pdfGenerator";
+import Pagination from "../common/Pagination";
 
 export default function AdvanceBalanceTable({ balances = [], loading }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  const totalPages = Math.ceil(balances.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentBalances = balances.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleDownloadPDF = () => {
+    const headers = ["CUSTOMER", "ADVANCE RECEIVED", "CONSUMED", "BALANCE", "UTILISATION %", "LAST TRANSACTION"];
+    const data = balances.map(row => [
+      row.customer_name,
+      `Rs. ${row.received.toLocaleString()}`,
+      `Rs. ${row.consumed.toLocaleString()}`,
+      `Rs. ${row.balance.toLocaleString()}`,
+      `${row.percent}%`,
+      row.last_tx
+    ]);
+    exportTableToPDF("Advance Balances", headers, data, "Advance_Balances.pdf");
+  };
+
   return (
     <div className="bg-white border border-[#00000026] rounded-xl overflow-hidden mt-6">
-      <div className="flex justify-between items-center p-6 border-b border-[#00000026]">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-6 border-b border-[#00000026] gap-4">
         <h2 className="text-xl font-bold text-[#4B5EAA]">Advance Balance Details</h2>
-        <div className="flex gap-4">
-          <button className="flex items-center gap-2 bg-[#4B5EAA] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#3d4f92] transition">
+        <div className="flex flex-wrap gap-4">
+          {/* <button 
+            onClick={() => window.print()}
+            className="flex items-center gap-2 bg-[#4B5EAA] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#3d4f92] transition cursor-pointer"
+          >
             <FiPrinter /> Print
-          </button>
-          <button className="flex items-center gap-2 bg-red-100 text-red-500 px-4 py-2 rounded-lg font-semibold hover:bg-red-200 transition">
+          </button> */}
+          <button 
+            onClick={handleDownloadPDF}
+            className="flex items-center gap-2 bg-red-100 text-red-500 px-4 py-2 rounded-lg font-semibold hover:bg-red-200 transition cursor-pointer"
+          >
             <FiDownload /> PDF
           </button>
         </div>
@@ -37,7 +65,7 @@ export default function AdvanceBalanceTable({ balances = [], loading }) {
                 <td colSpan="6" className="px-6 py-4 text-center text-gray-500">No balance records found.</td>
               </tr>
             ) : (
-              balances.map((row, idx) => (
+              currentBalances.map((row, idx) => (
                 <tr key={idx} className="hover:bg-gray-50">
                   <td className="px-6 py-4 font-medium text-[#4B5EAA]">{row.customer_name}</td>
                   <td className="px-6 py-4 font-bold text-gray-900">₹ {row.received.toLocaleString()}</td>
@@ -47,12 +75,21 @@ export default function AdvanceBalanceTable({ balances = [], loading }) {
                     </span>
                   </td>
                   <td className="px-6 py-4 font-bold text-green-500">₹ {row.balance.toLocaleString()}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 w-48">
                     <div className="flex items-center gap-3">
-                      <div className="w-24 bg-gray-200 rounded-full h-2">
-                        <div className="bg-[#4B5EAA] h-2 rounded-full" style={{ width: `${row.percent}%` }}></div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            row.percent >= 90
+                              ? "bg-red-500"
+                              : row.percent >= 70
+                                ? "bg-orange-500"
+                                : "bg-green-500"
+                          }`}
+                          style={{ width: `${Math.min(row.percent, 100)}%` }}
+                        />
                       </div>
-                      <span className="text-xs font-bold text-gray-400">{row.percent}%</span>
+                      <span className="text-xs font-bold text-gray-400 min-w-[30px]">{row.percent}%</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 font-bold text-gray-900">{row.last_tx}</td>
@@ -62,6 +99,13 @@ export default function AdvanceBalanceTable({ balances = [], loading }) {
           </tbody>
         </table>
       </div>
+      {!loading && balances.length > 0 && (
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://thomsonbe-new.onrender.com/api";
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://thomsonbe-new.onrender.com/api";
 
 export const api = {
   get: async (endpoint) => {

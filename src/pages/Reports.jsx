@@ -24,7 +24,7 @@ export default function Reports() {
   return (
     <div className="max-w-[1600px] mx-auto pb-10">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
 
         {/* Period Segmented Control */}
@@ -63,10 +63,10 @@ export default function Reports() {
 
       {/* Content Area */}
       <div>
-        {activeTab === "Sales Report" && <SalesReports />}
-        {activeTab === "Customer Purchase" && <CustomerPurchaseReport />}
-        {activeTab === "Advance Balance" && <AdvanceBalanceReport />}
-        {activeTab === "Invoice Report" && <InvoiceReport />}
+        {activeTab === "Sales Report" && <SalesReports period={period} />}
+        {activeTab === "Customer Purchase" && <CustomerPurchaseReport period={period} />}
+        {activeTab === "Advance Balance" && <AdvanceBalanceReport period={period} />}
+        {activeTab === "Invoice Report" && <InvoiceReport period={period} />}
       </div>
     </div>
   );

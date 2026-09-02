@@ -1,73 +1,94 @@
-import React from "react";
-import { FiEye } from "react-icons/fi";
+import { useState } from "react";
+import { FaFilePdf } from "react-icons/fa";
+import InvoicePreviewModal from "./InvoicePreviewModal";
 
-const getStatusStyle = (status) => {
-  switch (status) {
-    case "Paid": return "bg-green-100 text-green-600";
-    case "Unpaid": return "bg-red-100 text-red-500";
-    case "Partial": return "bg-yellow-100 text-yellow-600";
-    default: return "bg-gray-100 text-gray-600";
-  }
+const badge = {
+  Paid: "bg-green-100 text-green-700",
+  Unpaid: "bg-red-100 text-red-600",
+  Partial: "bg-yellow-100 text-yellow-700",
 };
 
-export default function InvoiceTable({ invoices = [], loading, onOpenModal }) {
+function InvoiceTable({ invoices = [], loading = false, onPaymentSuccess }) {
+  const [openModal, setOpenModal] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
+
   return (
-    <div className="bg-white border border-[#00000026] rounded-xl overflow-hidden mt-6">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm text-gray-600">
-          <thead className="bg-[#F8F9FB] text-xs uppercase text-gray-400 font-bold border-b border-[#00000026]">
-            <tr>
-              <th className="px-6 py-4">INVOICE NO</th>
-              <th className="px-6 py-4">CUSTOMER</th>
-              <th className="px-6 py-4">DATE</th>
-              <th className="px-6 py-4">AMOUNT</th>
-              <th className="px-6 py-4">TAX</th>
-              <th className="px-6 py-4">TOTAL</th>
-              <th className="px-6 py-4 text-center">STATUS</th>
-              <th className="px-6 py-4">ADVANCE USED</th>
-              <th className="px-6 py-4">BALANCE</th>
-              <th className="px-6 py-4 text-center">ACTION</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#00000026]">
-            {loading ? (
-              <tr>
-                <td colSpan="10" className="px-6 py-4 text-center text-gray-500">Loading invoices...</td>
+    <>
+      <div className="bg-white border border-[#00000026] rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead className="bg-gray-50">
+              <tr className="text-left text-gray-500 text-sm">
+                <th className="px-6 py-4">Invoice No</th>
+                <th className="px-6 py-4">Customer</th>
+                <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4">Amount</th>
+                <th className="px-6 py-4">Tax</th>
+                <th className="px-6 py-4">Total</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">Advance Used</th>
+                <th className="px-6 py-4">Balance</th>
+                <th className="px-6 py-4 text-center">Action</th>
               </tr>
-            ) : invoices.length === 0 ? (
-              <tr>
-                <td colSpan="10" className="px-6 py-4 text-center text-gray-500">No invoices found.</td>
-              </tr>
-            ) : (
-              invoices.map((row) => (
-                <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium text-[#4B5EAA]">{row.id}</td>
-                  <td className="px-6 py-4 font-bold text-gray-900">{row.customer}</td>
-                  <td className="px-6 py-4 font-medium text-gray-900">{row.date}</td>
-                  <td className="px-6 py-4 font-medium text-gray-900">₹ {row.amount}</td>
-                  <td className="px-6 py-4 font-medium text-gray-900">₹ {row.tax}</td>
-                  <td className="px-6 py-4 font-medium text-gray-900">₹ {row.total}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusStyle(row.status)}`}>
-                      {row.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 font-medium text-gray-900">₹ {row.advance_used}</td>
-                  <td className="px-6 py-4 font-bold text-green-500">₹ {row.balance}</td>
-                  <td className="px-6 py-4 text-center">
-                    <button 
-                      onClick={() => onOpenModal(row)}
-                      className="flex items-center gap-2 bg-[#4B5EAA] text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#3d4f92] transition mx-auto cursor-pointer"
-                    >
-                      <FiEye size={14} /> View
-                    </button>
+            </thead>
+
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan="10" className="px-6 py-8 text-center text-gray-500">
+                    Loading invoices...
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : invoices.length === 0 ? (
+                <tr>
+                  <td colSpan="10" className="px-6 py-8 text-center text-gray-500">
+                    No invoices found.
+                  </td>
+                </tr>
+              ) : (
+                invoices.map((invoice) => (
+                  <tr key={invoice.id} className="border-t border-[#00000026] hover:bg-gray-50">
+                    <td className="px-6 py-5 text-[#4B5EAA] font-bold">{invoice.id}</td>
+                    <td className="px-6 font-medium text-gray-900">{invoice.customer}</td>
+                    <td className="px-6 text-gray-600">{invoice.date}</td>
+                    <td className="px-6 font-medium text-gray-900">₹{invoice.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td className="px-6 text-gray-500">₹{invoice.tax.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td className="px-6 font-bold text-gray-900">₹{invoice.total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td className="px-6">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${badge[invoice.status] || badge.Unpaid}`}>
+                        {invoice.status}
+                      </span>
+                    </td>
+                    <td className="px-6 font-medium text-red-500">₹{invoice.advance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td className="px-6 font-bold text-green-600">₹{invoice.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td className="px-6">
+                      <button
+                        onClick={() => {
+                          setSelectedInvoice(invoice);
+                          setOpenModal(true);
+                        }}
+                        className="bg-[#4B5EAA] text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 cursor-pointer hover:bg-[#3f518f] mx-auto text-sm font-semibold transition-colors"
+                      >
+                        <FaFilePdf size={14} />
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      <InvoicePreviewModal
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        invoice={selectedInvoice}
+        onPaymentSuccess={onPaymentSuccess}
+      />
+    </>
   );
 }
+
+export default InvoiceTable;

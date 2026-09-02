@@ -66,11 +66,11 @@ const menus = [
     icon: <FiBell size={22} />,
     path: "/notification",
   },
-  //   {
-  //     name: "Sales Report",
-  //     icon: <FiFileText size={22} />,
-  //     path: "/sales-report",
-  //   },
+  {
+    name: "Sales Report",
+    icon: <FiFileText size={22} />,
+    path: "/sales-report",
+  },
   //   {
   //     name: "Customer Purchase",
   //     icon: <BiPurchaseTagAlt size={22} />,

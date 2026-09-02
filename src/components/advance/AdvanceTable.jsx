@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { FiDownload } from "react-icons/fi";
+import { exportTableToPDF } from "../../utils/pdfGenerator";
 import { FaMoneyBillWave, FaUniversity } from "react-icons/fa";
 import { BiMoney } from "react-icons/bi";
+import Pagination from "../common/Pagination";
 
 const getMethodIcon = (method) => {
   switch (method) {
@@ -13,18 +15,42 @@ const getMethodIcon = (method) => {
 };
 
 export default function AdvanceTable({ advances = [], loading, onRecordAdvance }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  const totalPages = Math.ceil(advances.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentAdvances = advances.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleDownloadPDF = () => {
+    const headers = ["ID", "CUSTOMER", "AMOUNT", "PAYMENT METHOD", "REFERENCE", "DATE", "NOTE"];
+    const data = advances.map(row => [
+      row.id,
+      row.customer,
+      `Rs. ${row.amount}`,
+      row.payment_method,
+      row.reference_no,
+      row.date,
+      row.note
+    ]);
+    exportTableToPDF("Advance Records", headers, data, "Advance_Records.pdf");
+  };
+
   return (
     <div className="bg-white border border-[#00000026] rounded-xl overflow-hidden mt-6">
-      <div className="flex justify-between items-center p-6 border-b border-[#00000026]">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-6 border-b border-[#00000026] gap-4">
         <h2 className="text-xl font-bold text-[#4B5EAA]">Records</h2>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
           <button 
             onClick={onRecordAdvance}
             className="flex items-center gap-2 bg-[#4B5EAA] cursor-pointer text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#3d4f92] transition"
           >
             <BiMoney size={20} /> Record Advance
           </button>
-          <button className="flex items-center gap-2 cursor-pointer bg-red-100 text-red-500 px-4 py-2 rounded-lg font-semibold hover:bg-red-200 transition">
+          <button 
+            onClick={handleDownloadPDF}
+            className="flex items-center gap-2 cursor-pointer bg-red-100 text-red-500 px-4 py-2 rounded-lg font-semibold hover:bg-red-200 transition"
+          >
             <FiDownload /> PDF
           </button>
         </div>
@@ -52,7 +78,7 @@ export default function AdvanceTable({ advances = [], loading, onRecordAdvance }
                 <td colSpan="7" className="px-6 py-4 text-center text-gray-500">No advances recorded yet.</td>
               </tr>
             ) : (
-              advances.map((row, idx) => (
+              currentAdvances.map((row, idx) => (
                 <tr key={idx} className="hover:bg-gray-50">
                   <td className="px-6 py-4 font-medium text-gray-900">{row.id}</td>
                   <td className="px-6 py-4 font-medium text-gray-900">{row.customer}</td>
@@ -72,6 +98,13 @@ export default function AdvanceTable({ advances = [], loading, onRecordAdvance }
           </tbody>
         </table>
       </div>
+      {!loading && advances.length > 0 && (
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+      )}
     </div>
   );
 }

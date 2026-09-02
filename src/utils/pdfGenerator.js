@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 /**
  * Utility function to export a simple table to PDF
@@ -22,7 +22,7 @@ export const exportTableToPDF = (title, headers, data, filename = "report.pdf") 
   doc.text(`Generated on: ${dateStr}`, 14, 28);
   
   // Add Table
-  doc.autoTable({
+  autoTable(doc, {
     head: [headers],
     body: data,
     startY: 35,
@@ -69,7 +69,7 @@ export const exportInvoiceToPDF = (invoice) => {
     ["Balance Due", `Rs. ${parseFloat(invoice.balance || 0).toFixed(2)}`]
   ];
 
-  doc.autoTable({
+  autoTable(doc, {
     head: [headers],
     body: data,
     startY: 75,

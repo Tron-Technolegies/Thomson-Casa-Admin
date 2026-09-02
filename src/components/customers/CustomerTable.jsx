@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { FiTrash2, FiEdit2, FiEye } from "react-icons/fi";
+import Pagination from "../common/Pagination";
 
 const getTypeColor = (type) => {
   const t = type?.toLowerCase();
@@ -16,8 +17,16 @@ const getStatusColor = (status) => {
 };
 
 export default function CustomerTable({ customers = [], loading, onPreview, onEdit, onDelete }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  const totalPages = Math.ceil(customers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentCustomers = customers.slice(startIndex, startIndex + itemsPerPage);
+
   return (
-    <div className="overflow-x-auto">
+    <div className="flex flex-col w-full">
+      <div className="overflow-x-auto">
       <table className="w-full text-left text-sm text-gray-600">
         <thead className="bg-[#F7F7F7] text-xs uppercase text-gray-500 font-semibold border-b border-[#00000026]">
           <tr>
@@ -40,7 +49,7 @@ export default function CustomerTable({ customers = [], loading, onPreview, onEd
               <td colSpan="7" className="px-6 py-4 text-center text-gray-500">No customers found.</td>
             </tr>
           ) : (
-            customers.map((cust) => (
+            currentCustomers.map((cust) => (
               <tr key={cust.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 font-medium text-gray-900">{cust.customer_name}</td>
                 <td className="px-6 py-4">{cust.company_name}</td>
@@ -73,6 +82,14 @@ export default function CustomerTable({ customers = [], loading, onPreview, onEd
           )}
         </tbody>
       </table>
+      </div>
+      {!loading && customers.length > 0 && (
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+      )}
     </div>
   );
 }

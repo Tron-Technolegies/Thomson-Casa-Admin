@@ -2,15 +2,19 @@ import React, { useState, useEffect } from "react";
 import { FiTrendingUp, FiFileText, FiDollarSign, FiCreditCard, FiDownload } from "react-icons/fi";
 import { api } from "../../services/api";
 import { exportTableToPDF } from "../../utils/pdfGenerator";
+import Pagination from "../common/Pagination";
 
-export default function InvoiceReport() {
+export default function InvoiceReport({ period = "Daily" }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchInvoices = async () => {
       try {
-        const res = await api.get("/admin/invoices/");
+        const res = await api.get(`/admin/invoices/?period=${period}`);
         if (res.success) {
           setData(res.invoices || []);
         }
@@ -21,7 +25,28 @@ export default function InvoiceReport() {
       }
     };
     fetchInvoices();
-  }, []);
+  }, [period]);
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedData = [...data].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.ceil(sortedData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentData = sortedData.slice(startIndex, startIndex + itemsPerPage);
 
   const totalAmount = data.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
   const totalTax = data.reduce((sum, item) => sum + parseFloat(item.tax || 0), 0);
@@ -107,13 +132,13 @@ export default function InvoiceReport() {
           <table className="w-full text-left text-sm text-gray-600">
             <thead className="bg-[#F8F9FB] text-xs uppercase text-gray-400 font-bold border-b border-[#00000026]">
               <tr>
-                <th className="px-6 py-4">INVOICE NO</th>
-                <th className="px-6 py-4 text-center">CUSTOMER</th>
-                <th className="px-6 py-4 text-center">DATE</th>
-                <th className="px-6 py-4 text-center">AMOUNT</th>
-                <th className="px-6 py-4 text-center">TAX</th>
-                <th className="px-6 py-4 text-center">TOTAL</th>
-                <th className="px-6 py-4 text-right">STATUS</th>
+                <th className="px-6 py-4 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('id')}>INVOICE NO</th>
+                <th className="px-6 py-4 text-center cursor-pointer hover:bg-gray-100" onClick={() => handleSort('customer')}>CUSTOMER</th>
+                <th className="px-6 py-4 text-center cursor-pointer hover:bg-gray-100" onClick={() => handleSort('date')}>DATE</th>
+                <th className="px-6 py-4 text-center cursor-pointer hover:bg-gray-100" onClick={() => handleSort('amount')}>AMOUNT</th>
+                <th className="px-6 py-4 text-center cursor-pointer hover:bg-gray-100" onClick={() => handleSort('tax')}>TAX</th>
+                <th className="px-6 py-4 text-center cursor-pointer hover:bg-gray-100" onClick={() => handleSort('total')}>TOTAL</th>
+                <th className="px-6 py-4 text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('status')}>STATUS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#00000026]">
@@ -122,7 +147,7 @@ export default function InvoiceReport() {
               ) : data.length === 0 ? (
                 <tr><td colSpan="7" className="text-center py-4 text-gray-500">No data available.</td></tr>
               ) : (
-                data.map((row, idx) => (
+                currentData.map((row, idx) => (
                   <tr key={idx} className="hover:bg-gray-50">
                     <td className="px-6 py-5 font-medium text-blue-400">{row.id}</td>
                     <td className="px-6 py-5 font-medium text-gray-900 text-center">{row.customer}</td>
@@ -141,6 +166,13 @@ export default function InvoiceReport() {
             </tbody>
           </table>
         </div>
+        {!loading && data.length > 0 && (
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
     </div>
   );

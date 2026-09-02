@@ -1,40 +1,46 @@
-import React from 'react';
-import { FiAlertTriangle } from 'react-icons/fi';
+import React from "react";
+import { IoClose, IoWarningOutline } from "react-icons/io5";
 
-export default function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirm", cancelText = "Cancel", isDanger = true }) {
+export default function ConfirmModal({ isOpen, onClose, onConfirm, title, message }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
-        <div className="p-6">
-          <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
-            <FiAlertTriangle className="w-6 h-6 text-red-600" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-red-50/50">
+          <div className="flex items-center gap-3">
+            <div className="bg-red-100 text-red-600 p-2 rounded-full">
+              <IoWarningOutline size={24} />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900">{title || "Confirm Action"}</h2>
           </div>
-          <h3 className="text-lg font-bold text-center text-gray-900 mb-2">
-            {title}
-          </h3>
-          <p className="text-sm text-center text-gray-500">
-            {message}
-          </p>
-        </div>
-        <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
-          <button
+          <button 
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-red-100 rounded-full"
           >
-            {cancelText}
+            <IoClose size={24} />
           </button>
-          <button
+        </div>
+        
+        <div className="p-6">
+          <p className="text-gray-600 text-base">{message || "Are you sure you want to proceed?"}</p>
+        </div>
+        
+        <div className="p-6 pt-0 flex gap-4 justify-end bg-gray-50/50 rounded-b-2xl mt-4 border-t border-gray-100 py-4">
+          <button 
+            onClick={onClose}
+            className="px-6 py-2.5 rounded-xl font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:shadow-sm transition-all"
+          >
+            Cancel
+          </button>
+          <button 
             onClick={() => {
               onConfirm();
               onClose();
             }}
-            className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
-              isDanger ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"
-            }`}
+            className="px-6 py-2.5 rounded-xl font-semibold text-white bg-red-500 hover:bg-red-600 hover:shadow-md transition-all flex items-center gap-2"
           >
-            {confirmText}
+            Confirm
           </button>
         </div>
       </div>

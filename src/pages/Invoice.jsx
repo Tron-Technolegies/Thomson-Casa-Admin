@@ -1,78 +1,102 @@
 import React, { useState, useEffect } from "react";
-import { FiCalendar, FiFilter } from "react-icons/fi";
-import InvoiceStatCards from "../components/invoice/InvoiceStatCards";
+import InvoiceStatCard from "../components/invoice/InvoiceStatCard";
 import InvoiceTable from "../components/invoice/InvoiceTable";
-import InvoiceModal from "../components/invoice/InvoiceModal";
+import DateRange from "../components/sales/DateRange";
 import { api } from "../services/api";
 
-export default function Invoice() {
-  const [selectedInvoice, setSelectedInvoice] = useState(null);
+function Invoice() {
   const [invoices, setInvoices] = useState([]);
+  const [stats, setStats] = useState({
+    total_invoiced: 0,
+    total_tax: 0,
+    gross_total: 0,
+    amount_paid: 0,
+    cleared_count: 0
+  });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [date, setDate] = useState("");
 
-  const today = new Date();
-  const pastWeek = new Date(today);
-  pastWeek.setDate(pastWeek.getDate() - 7);
-  const [startDate, setStartDate] = useState(pastWeek.toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
+  const fetchInvoices = async () => {
+    try {
+      const url = date ? `/accounts/invoices/?date=${date}` : "/accounts/invoices/";
+      const res = await api.get(url);
+      if (res.success) {
+        setInvoices(res.invoices || []);
+        setStats(res.stats || {
+          total_invoiced: 0,
+          total_tax: 0,
+          gross_total: 0,
+          amount_paid: 0,
+          cleared_count: 0
+        });
+      } else {
+        setError(res.message || "Failed to load invoices.");
+      }
+    } catch (err) {
+      setError("Error connecting to server.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchInvoices = async () => {
-      setLoading(true);
-      try {
-        const query = new URLSearchParams();
-        if (startDate) query.append("start_date", startDate);
-        if (endDate) query.append("end_date", endDate);
-
-        const res = await api.get(`/admin/invoices/?${query.toString()}`);
-        if (res.success) {
-          setInvoices(res.invoices || []);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchInvoices();
-  }, [startDate, endDate]);
+  }, [date]);
 
   return (
-    <div className="max-w-[1600px] mx-auto pb-10">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Invoice</h1>
-        <div className="flex gap-4">
-          <div className="flex items-center gap-2 bg-[#F7F7F7] border border-[#00000026] rounded-xl px-4 py-2">
-            <FiCalendar className="text-gray-500" />
-            <input 
-              type="date" 
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="bg-transparent text-sm font-semibold text-gray-700 outline-none cursor-pointer" 
-            />
-            <span className="text-gray-400 px-1">—</span>
-            <input 
-              type="date" 
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="bg-transparent text-sm font-semibold text-gray-700 outline-none cursor-pointer" 
-            />
-          </div>
-          <button className="flex items-center gap-2 bg-[#F7F7F7] border border-[#00000026] rounded-xl px-4 py-2 text-gray-700 font-semibold hover:bg-gray-100 transition">
-            <FiFilter /> Filter
-          </button>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4">
+        <div>
+          <h1 className="text-4xl font-bold text-gray-800">Invoice</h1>
+          <p className="text-gray-500 mt-1">Manage customer invoices and payments</p>
         </div>
+        <DateRange date={date} setDate={setDate} />
       </div>
 
-      <InvoiceStatCards invoices={invoices} />
-      
-      <InvoiceTable invoices={invoices} loading={loading} onOpenModal={(invoice) => setSelectedInvoice(invoice)} />
+      {error && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200">
+          {error}
+        </div>
+      )}
 
-      <InvoiceModal 
-        isOpen={!!selectedInvoice} 
-        onClose={() => setSelectedInvoice(null)}
-        invoice={selectedInvoice}
-      />
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <InvoiceStatCard
+          title="Total Invoiced"
+          value={`₹${stats.total_invoiced.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`}
+          subtitle="Net amount"
+          type="invoice"
+        />
+
+        <InvoiceStatCard 
+          title="Total Tax" 
+          value={`₹${stats.total_tax.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} 
+          subtitle="GST collected" 
+          type="tax" 
+        />
+
+        <InvoiceStatCard
+          title="Gross Total"
+          value={`₹${stats.gross_total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`}
+          subtitle="Incl. taxes"
+          type="gross"
+        />
+
+        <InvoiceStatCard
+          title="Amount Paid"
+          value={`₹${stats.amount_paid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`}
+          subtitle={`${stats.cleared_count} invoices cleared`}
+          type="paid"
+        />
+      </div>
+
+      {/* Table */}
+      <InvoiceTable invoices={invoices} loading={loading} onPaymentSuccess={fetchInvoices} />
     </div>
   );
 }
+
+export default Invoice;

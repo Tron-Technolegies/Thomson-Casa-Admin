@@ -3,18 +3,22 @@ import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiShoppingCart, FiAlertCirc
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { api } from "../../services/api";
 import { exportTableToPDF } from "../../utils/pdfGenerator";
+import Pagination from "../common/Pagination";
 
-export default function SalesReports() {
+export default function SalesReports({ period = "Daily" }) {
   const [stats, setStats] = useState({ revenue: 0, orders: 0 });
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [statsRes, chartsRes] = await Promise.all([
-          api.get("/admin/dashboard/stats/"),
-          api.get("/admin/dashboard/charts/")
+          api.get(`/admin/dashboard/stats/?period=${period}`),
+          api.get(`/admin/dashboard/charts/?period=${period}`)
         ]);
         
         if (statsRes.success) {
@@ -34,7 +38,28 @@ export default function SalesReports() {
       }
     };
     fetchData();
-  }, []);
+  }, [period]);
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedData = [...chartData].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.ceil(sortedData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentData = sortedData.slice(startIndex, startIndex + itemsPerPage);
 
   const handleDownloadPDF = () => {
     const headers = ["DAY", "REVENUE", "ORDERS", "AVG REVENUE"];
@@ -124,9 +149,9 @@ export default function SalesReports() {
 
       {/* Table Section */}
       <div className="bg-white border border-[#00000026] rounded-xl overflow-hidden shadow-sm">
-        <div className="flex justify-between items-center p-6 border-b border-[#00000026]">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-6 border-b border-[#00000026] gap-4">
           <h2 className="text-lg font-bold text-gray-900">Recent Transactions</h2>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-4">
             <button 
               onClick={() => alert("Excel download not implemented yet.")}
               className="flex items-center gap-2 bg-green-100 text-green-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-200 transition cursor-pointer">
@@ -143,16 +168,16 @@ export default function SalesReports() {
           <table className="w-full text-left text-sm text-gray-600">
             <thead className="bg-[#F8F9FB] text-xs uppercase text-gray-400 font-bold border-b border-[#00000026]">
               <tr>
-                <th className="px-6 py-4">DAY</th>
-                <th className="px-6 py-4">REVENUE</th>
-                <th className="px-6 py-4">ORDERS</th>
+                <th className="px-6 py-4 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>DAY</th>
+                <th className="px-6 py-4 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('revenue')}>REVENUE</th>
+                <th className="px-6 py-4 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('orders')}>ORDERS</th>
                 <th className="px-6 py-4 text-right">AVG REVENUE</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#00000026]">
               {loading ? (
                 <tr><td colSpan="4" className="text-center py-4">Loading...</td></tr>
-              ) : chartData.map((row, idx) => (
+              ) : currentData.map((row, idx) => (
                 <tr key={idx} className="hover:bg-gray-50">
                   <td className="px-6 py-5 font-medium text-gray-900">{row.name}</td>
                   <td className="px-6 py-5 font-medium text-gray-900">₹{row.revenue.toLocaleString()}</td>
@@ -165,6 +190,13 @@ export default function SalesReports() {
             </tbody>
           </table>
         </div>
+        {!loading && sortedData.length > 0 && (
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
     </div>
   );

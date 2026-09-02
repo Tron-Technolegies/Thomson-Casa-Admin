@@ -1,5 +1,6 @@
-import React from "react";
-import { FiEdit2 } from "react-icons/fi";
+import React, { useState } from "react";
+import { FiEdit2, FiTrash2 } from "react-icons/fi";
+import Pagination from "../common/Pagination";
 
 const tabs = ["All", "Pending", "Cutting", "Ready", "Delivered", "Cancelled"];
 
@@ -15,8 +16,14 @@ const getStatusStyle = (status) => {
 };
 
 export default function OrderTable({ 
-  orders = [], loading, activeTab, setActiveTab, dateFilter, setDateFilter, onEdit 
+  orders = [], loading, activeTab, setActiveTab, dateFilter, setDateFilter, onEdit, onDelete 
 }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  const totalPages = Math.ceil(orders.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentOrders = orders.slice(startIndex, startIndex + itemsPerPage);
 
   const getDisplayItems = (order) => {
     return order.items && order.items.length > 0 
@@ -36,8 +43,8 @@ export default function OrderTable({
   return (
     <div>
       {/* Tabs and Filter */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div className="flex flex-wrap gap-2">
           {tabs.map((tab) => (
             <button
               key={tab}
@@ -89,7 +96,7 @@ export default function OrderTable({
                   <td colSpan="8" className="px-6 py-4 text-center text-gray-500">No orders found.</td>
                 </tr>
               ) : (
-                orders.map((order) => {
+                currentOrders.map((order) => {
                   const displayItems = getDisplayItems(order);
                   const types = getChickenTypes(displayItems);
                   const totalWeight = getTotalWeight(displayItems);
@@ -108,12 +115,20 @@ export default function OrderTable({
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <button 
-                        onClick={() => onEdit && onEdit(order)}
-                        className="text-gray-600 hover:text-[#4B5EAA] transition"
-                      >
-                        <FiEdit2 size={18} />
-                      </button>
+                      <div className="flex items-center justify-center gap-3">
+                        <button 
+                          onClick={() => onEdit && onEdit(order)}
+                          className="text-gray-600 hover:text-[#4B5EAA] transition"
+                        >
+                          <FiEdit2 size={18} />
+                        </button>
+                        <button 
+                          onClick={() => onDelete && onDelete(order)}
+                          className="text-gray-600 hover:text-red-500 transition"
+                        >
+                          <FiTrash2 size={18} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )})
@@ -121,6 +136,13 @@ export default function OrderTable({
             </tbody>
           </table>
         </div>
+        {!loading && orders.length > 0 && (
+          <Pagination 
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
     </div>
   );

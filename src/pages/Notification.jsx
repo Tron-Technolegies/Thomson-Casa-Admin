@@ -61,7 +61,7 @@ export default function Notification() {
 
   return (
     <div className="max-w-[1200px] mx-auto pb-10">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-1">Notifications</h1>
           <p className="text-sm text-gray-500 font-semibold">{unreadCount} Unread</p>

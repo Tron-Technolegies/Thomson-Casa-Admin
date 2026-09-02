@@ -11,6 +11,7 @@ import RecordAdvance from "./pages/RecordAdvance";
 import AdvanceBalance from "./pages/AdvanceBalance";
 import Invoice from "./pages/Invoice";
 import Reports from "./pages/Reports";
+import SalesReport from "./pages/SalesReport";
 import Notification from "./pages/Notification";
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
       <Route path="advance-balance" element={<AdvanceBalance />} />
       <Route path="invoice" element={<Invoice />} />
       <Route path="reports" element={<Reports />} />
+      <Route path="sales-report" element={<SalesReport />} />
       <Route path="notification" element={<Notification />} />
     </Route>
   </Routes>

@@ -4,6 +4,7 @@ import AddCustomerModal from "../components/customers/AddCustomerModal";
 import CustomerPreviewModal from "../components/customers/CustomerPreviewModal";
 import EditCustomerModal from "../components/customers/EditCustomerModal";
 import CustomerTable from "../components/customers/CustomerTable";
+import ConfirmModal from "../components/common/ConfirmModal";
 import { api } from "../services/api";
 
 export default function Customers() {
@@ -15,6 +16,7 @@ export default function Customers() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
   const fetchCustomers = async () => {
     try {
@@ -39,16 +41,21 @@ export default function Customers() {
     fetchCustomers();
   }, [search, statusFilter, typeFilter]);
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this customer?")) {
-      try {
-        const response = await api.delete(`/admin/customers/${id}/delete/`);
-        if (response.success) {
-          fetchCustomers();
-        }
-      } catch (error) {
-        alert(error.message || "Failed to delete customer");
+  const handleDeleteClick = (id) => {
+    setDeleteConfirmId(id);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmId) return;
+    try {
+      const response = await api.delete(`/admin/customers/${deleteConfirmId}/delete/`);
+      if (response.success) {
+        fetchCustomers();
       }
+    } catch (error) {
+      alert(error.message || "Failed to delete customer");
+    } finally {
+      setDeleteConfirmId(null);
     }
   };
 
@@ -58,7 +65,7 @@ export default function Customers() {
 
   return (
     <div className="max-w-[1600px] mx-auto pb-10">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Customer Management</h1>
         <button 
           onClick={() => setIsModalOpen(true)}
@@ -111,7 +118,7 @@ export default function Customers() {
           loading={loading} 
           onPreview={handlePreview} 
           onEdit={(cust) => setEditCustomer(cust)}
-          onDelete={handleDelete}
+          onDelete={handleDeleteClick}
           onRefresh={fetchCustomers}
         />
       </div>
@@ -133,6 +140,14 @@ export default function Customers() {
         isOpen={!!previewCustomer} 
         onClose={() => setPreviewCustomer(null)} 
         customer={previewCustomer} 
+      />
+
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Customer"
+        message="Are you sure you want to delete this customer? This action cannot be undone."
       />
     </div>
   );

@@ -11,8 +11,8 @@ export default function CuttingTeam() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  // Use today's date as default filter if appropriate, or empty for all. We'll start empty.
-  const [dateFilter, setDateFilter] = useState("");
+  // Use today's date as default filter
+  const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -47,7 +47,7 @@ export default function CuttingTeam() {
 
   return (
     <div className="max-w-[1600px] mx-auto pb-10">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Cutting Team</h1>
         <div className="flex gap-4">
           <div className="flex items-center gap-2 bg-[#F7F7F7] border border-[#00000026] rounded-xl px-4 py-2">
