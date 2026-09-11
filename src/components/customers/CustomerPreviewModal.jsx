@@ -36,9 +36,69 @@ export default function CustomerPreviewModal({ isOpen, onClose, customer }) {
   
   const totalPurchaseAmount = purchaseHistory.reduce((sum, p) => sum + parseFloat(p.amount.replace(/[^0-9.-]+/g,"")), 0);
 
+  const handlePrint = () => {
+    // Open purchase and transaction history before printing
+    setIsPurchaseOpen(true);
+    setIsTransactionOpen(true);
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  };
+
+  const handleShare = async () => {
+    const text = `Customer Details:
+Name: ${displayCustomer.customer_name || "N/A"}
+Company: ${displayCustomer.company_name || "N/A"}
+Phone: ${displayCustomer.phone || "N/A"}
+Address: ${displayCustomer.address || "N/A"}
+Score: ${displayCustomer.performance_score || 0} / 100`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Customer Details',
+          text: text,
+        });
+      } catch (err) {
+        console.error("Error sharing", err);
+      }
+    } else {
+      navigator.clipboard.writeText(text);
+      alert("Customer details copied to clipboard!");
+    }
+  };
+
   return (
+    <>
+    <style>
+      {`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #printable-modal, #printable-modal * {
+            visibility: visible;
+          }
+          #printable-modal {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: auto;
+            max-height: none !important;
+            overflow: visible !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}
+    </style>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-5xl max-h-[92vh] overflow-y-auto rounded-3xl bg-white shadow-2xl">
+      <div id="printable-modal" className="relative w-full max-w-5xl max-h-[92vh] overflow-y-auto rounded-3xl bg-white shadow-2xl">
         
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between border-b border-gray-100 px-8 py-6 sticky top-0 bg-white z-10">
@@ -46,14 +106,17 @@ export default function CustomerPreviewModal({ isOpen, onClose, customer }) {
             Customer Details
           </h2>
 
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-              <FiDownload /> PDF
+          <div className="flex items-center gap-3 no-print">
+            <button 
+              onClick={handlePrint}
+              className="flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <FiDownload /> PDF / Print
             </button>
-            {/* <button className="flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-              <FiPrinter /> Print
-            </button> */}
-            <button className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-100">
+            <button 
+              onClick={handleShare}
+              className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-100"
+            >
               <FiShare2 /> Share
             </button>
             <button
@@ -71,11 +134,23 @@ export default function CustomerPreviewModal({ isOpen, onClose, customer }) {
           ) : (
             <>
               {/* Customer Info Card */}
-              <div className="bg-[#F8F9FB] rounded-2xl p-6">
+              <div className="bg-[#F8F9FB] rounded-2xl p-6 relative">
                 <h3 className="text-xl font-bold text-gray-900 mb-1">{displayCustomer.customer_name || "N/A"}</h3>
                 <p className="text-gray-600 text-sm mb-1">{displayCustomer.company_name || "N/A"}, {displayCustomer.address || "No Address"}</p>
                 <p className="text-gray-600 text-sm mb-1">{displayCustomer.phone || "N/A"} | {displayCustomer.email || "N/A"}</p>
                 <p className="text-gray-600 text-sm">GST: {displayCustomer.gst_number || "N/A"}</p>
+
+                {/* Score Widget */}
+                <div className="absolute top-6 right-6 flex flex-col items-end">
+                  <span className="text-xs font-semibold text-gray-500 uppercase mb-1">Performance Score</span>
+                  <div className={`px-4 py-2 rounded-xl text-lg font-bold border ${
+                    displayCustomer.performance_score >= 80 ? 'bg-green-50 text-green-700 border-green-200' :
+                    displayCustomer.performance_score >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                    'bg-red-50 text-red-700 border-red-200'
+                  }`}>
+                    {displayCustomer.performance_score} <span className="text-xs opacity-70">/ 100</span>
+                  </div>
+                </div>
               </div>
 
               {/* Purchase History */}
@@ -207,5 +282,6 @@ export default function CustomerPreviewModal({ isOpen, onClose, customer }) {
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -1,25 +1,36 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FiTrendingUp, FiShoppingCart, FiEdit2, FiX } from "react-icons/fi";
 import { api } from "../../services/api";
 
-export default function AccountsStatCards({ orders = [], dailyPrices = {}, selectedDate, onUpdatePrices }) {
+export default function AccountsStatCards({ orders = [], dailyPrices = {}, selectedDate, onUpdatePrices, dailyCategorySales = {} }) {
+  const [categories, setCategories] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
-  const [pricesForm, setPricesForm] = useState({
-    "Full Chicken": "",
-    "Dressed Chicken": "",
-    "Boneless Chicken": ""
-  });
+  const [pricesForm, setPricesForm] = useState({});
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await api.get('/admin/categories/');
+        if (response.success) {
+          setCategories(response.categories);
+        }
+      } catch (err) {
+        console.error("Failed to load categories:", err);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const totalPurchases = orders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0);
   const totalOrders = orders.length;
 
   const handleEditClick = () => {
-    setPricesForm({
-      "Full Chicken": dailyPrices["Full Chicken"] || "",
-      "Dressed Chicken": dailyPrices["Dressed Chicken"] || "",
-      "Boneless Chicken": dailyPrices["Boneless Chicken"] || ""
+    const initialForm = {};
+    categories.forEach(cat => {
+      initialForm[cat.name] = dailyPrices[cat.name] || "";
     });
+    setPricesForm(initialForm);
     setIsEditing(true);
   };
 
@@ -44,7 +55,7 @@ export default function AccountsStatCards({ orders = [], dailyPrices = {}, selec
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         {/* Total Purchases */}
         <div className="bg-white border border-[#00000026] rounded-xl p-6 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
@@ -81,27 +92,51 @@ export default function AccountsStatCards({ orders = [], dailyPrices = {}, selec
           </div>
         </div>
 
+        {/* Daily Category-wise Sales */}
+        <div className="bg-white border border-[#00000026] rounded-xl p-6 shadow-sm flex flex-col">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-sm font-bold text-gray-400 tracking-wider uppercase">Sales by Category</span>
+          </div>
+          <div className="flex-1 overflow-y-auto max-h-32 pr-1 custom-scrollbar space-y-3">
+            {Object.keys(dailyCategorySales).length > 0 ? (
+              Object.entries(dailyCategorySales).map(([cat, data]) => (
+                <div key={cat} className="flex justify-between items-center bg-gray-50 p-2 rounded-lg border border-gray-100">
+                  <div>
+                    <div className="text-xs font-bold text-gray-800">{cat}</div>
+                    <div className="text-[10px] text-gray-500">{data.weight} kg sold</div>
+                  </div>
+                  <div className="text-sm font-bold text-green-600">₹{data.value.toLocaleString()}</div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-gray-400 text-xs py-4">No sales data today.</div>
+            )}
+          </div>
+        </div>
+
         {/* Market Prices */}
         <div className="flex flex-col gap-3">
           <div className="flex justify-between items-center">
             <span className="text-sm font-bold text-gray-400 tracking-wider uppercase">Today's Market</span>
-            <button onClick={handleEditClick} className="text-blue-500 hover:text-blue-700 text-sm flex items-center gap-1">
+            <button onClick={handleEditClick} className="text-[#4B5EAA] hover:text-[#3d4f92] text-sm flex items-center gap-1 font-semibold transition">
               <FiEdit2 /> Edit
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-3 h-full">
-            <div className="bg-white border border-[#00000026] rounded-xl p-3 shadow-sm flex flex-col justify-center">
-              <h4 className="text-[10px] font-bold text-gray-500 mb-1 uppercase">Dressed Chicken</h4>
-              <span className="text-orange-500 font-bold text-sm">₹{dailyPrices["Dressed Chicken"] || "---"}/kg</span>
-            </div>
-            <div className="bg-white border border-[#00000026] rounded-xl p-3 shadow-sm flex flex-col justify-center">
-              <h4 className="text-[10px] font-bold text-gray-500 mb-1 uppercase">Full Chicken</h4>
-              <span className="text-orange-500 font-bold text-sm">₹{dailyPrices["Full Chicken"] || "---"}/kg</span>
-            </div>
-            <div className="bg-white border border-[#00000026] rounded-xl p-3 shadow-sm flex flex-col justify-center col-span-2">
-              <h4 className="text-[10px] font-bold text-gray-500 mb-1 uppercase">Boneless Chicken</h4>
-              <span className="text-orange-500 font-bold text-sm">₹{dailyPrices["Boneless Chicken"] || "---"}/kg</span>
-            </div>
+          <div className="grid grid-cols-2 gap-3 h-full overflow-y-auto max-h-48 pr-1 custom-scrollbar">
+            {categories.map((cat, index) => (
+              <div 
+                key={cat.id} 
+                className={`bg-white border border-[#00000026] rounded-xl p-3 shadow-sm flex flex-col justify-center ${categories.length % 2 !== 0 && index === categories.length - 1 ? 'col-span-2' : ''}`}
+              >
+                <h4 className="text-[10px] font-bold text-gray-500 mb-1 uppercase">{cat.name}</h4>
+                <span className="text-orange-500 font-bold text-sm">₹{dailyPrices[cat.name] || "---"}/kg</span>
+              </div>
+            ))}
+            {categories.length === 0 && (
+              <div className="col-span-2 text-center text-gray-500 text-xs py-4">
+                No categories available. Add categories from Categories page.
+              </div>
+            )}
           </div>
         </div>
       </div>

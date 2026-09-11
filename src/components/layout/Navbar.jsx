@@ -1,31 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { MdMenu, MdNotificationsNone } from "react-icons/md";
-import { FiSearch } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
-import { api } from "../../services/api";
+import { useNotification } from "../../context/NotificationContext";
 
 function Navbar({ setSidebarOpen }) {
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { unreadCount } = useNotification();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const res = await api.get("/admin/notifications/");
-        if (res.success && res.notifications) {
-          const unread = res.notifications.filter(n => !n.is_read).length;
-          setUnreadCount(unread);
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    
-    fetchNotifications();
-    // Refresh notifications every minute (optional)
-    const interval = setInterval(fetchNotifications, 60000);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-[#00000026] h-24 px-6 flex items-center justify-between">

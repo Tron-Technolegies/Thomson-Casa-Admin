@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FiShoppingCart, FiCreditCard, FiFileText, FiAlertCircle } from "react-icons/fi";
 import { api } from "../services/api";
 import ConfirmModal from "../components/common/ConfirmModal";
+import { useNotification } from "../context/NotificationContext";
 
 const getIconProps = (type) => {
   switch (type) {
@@ -17,6 +18,7 @@ export default function Notification() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+  const { refreshNotifications } = useNotification();
 
   const fetchNotifications = async () => {
     try {
@@ -39,7 +41,8 @@ export default function Notification() {
     try {
       const res = await api.post("/admin/notifications/read/");
       if (res.success) {
-        fetchNotifications();
+        await fetchNotifications();
+        refreshNotifications();
       }
     } catch (err) {
       console.error(err);
@@ -50,7 +53,8 @@ export default function Notification() {
     try {
       const res = await api.delete("/admin/notifications/clear/");
       if (res.success) {
-        fetchNotifications();
+        await fetchNotifications();
+        refreshNotifications();
       }
     } catch (err) {
       console.error(err);

@@ -1,8 +1,6 @@
-import { useState } from "react";
 import { FaCalendarAlt } from "react-icons/fa";
 
-function FilterBar() {
-  const [activeTab, setActiveTab] = useState("Daily");
+function FilterBar({ activeTab = "Daily", setActiveTab }) {
 
   const tabs = ["Daily", "Weekly", "Monthly"];
 

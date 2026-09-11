@@ -16,6 +16,12 @@ const getStatusColor = (status) => {
   return status?.toLowerCase() === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600";
 };
 
+const getScoreColor = (score) => {
+  if (score >= 80) return "bg-green-100 text-green-700";
+  if (score >= 50) return "bg-yellow-100 text-yellow-700";
+  return "bg-red-100 text-red-700";
+};
+
 export default function CustomerTable({ customers = [], loading, onPreview, onEdit, onDelete }) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -34,6 +40,7 @@ export default function CustomerTable({ customers = [], loading, onPreview, onEd
             <th className="px-6 py-4">COMPANY</th>
             <th className="px-6 py-4">PHONE</th>
             <th className="px-6 py-4">ADDRESS</th>
+            <th className="px-6 py-4 text-center">SCORE</th>
             <th className="px-6 py-4 text-center">CUSTOMER TYPE</th>
             <th className="px-6 py-4 text-center">STATUS</th>
             <th className="px-6 py-4 text-center">ACTION</th>
@@ -50,11 +57,20 @@ export default function CustomerTable({ customers = [], loading, onPreview, onEd
             </tr>
           ) : (
             currentCustomers.map((cust) => (
-              <tr key={cust.id} className="hover:bg-gray-50">
+              <tr 
+                key={cust.id} 
+                className="hover:bg-gray-50 cursor-pointer"
+                onClick={() => onPreview && onPreview(cust)}
+              >
                 <td className="px-6 py-4 font-medium text-gray-900">{cust.customer_name}</td>
                 <td className="px-6 py-4">{cust.company_name}</td>
                 <td className="px-6 py-4">{cust.phone}</td>
                 <td className="px-6 py-4 truncate max-w-[150px]" title={cust.address}>{cust.address}</td>
+                <td className="px-6 py-4 text-center">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${getScoreColor(cust.performance_score)}`}>
+                    {cust.performance_score} / 100
+                  </span>
+                </td>
                 <td className="px-6 py-4 text-center">
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(cust.customer_type)} capitalize`}>
                     {cust.customer_type?.replace('_', ' ')}
@@ -65,16 +81,10 @@ export default function CustomerTable({ customers = [], loading, onPreview, onEd
                     {cust.status}
                   </span>
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-center gap-3">
                     <button onClick={() => onDelete && onDelete(cust.id)} className="text-gray-500 hover:text-red-600"><FiTrash2 size={18} /></button>
                     <button onClick={() => onEdit && onEdit(cust)} className="text-gray-500 hover:text-[#465C8F]"><FiEdit2 size={18} /></button>
-                    <button 
-                      onClick={() => onPreview && onPreview(cust)}
-                      className="text-gray-500 hover:text-[#465C8F]"
-                    >
-                      <FiEye size={18} />
-                    </button>
                   </div>
                 </td>
               </tr>

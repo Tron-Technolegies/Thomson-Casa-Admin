@@ -1,5 +1,5 @@
-import React from "react";
-import { FiEdit2 } from "react-icons/fi";
+import React, { useState } from "react";
+import { FiEdit2, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 const getStatusStyle = (status) => {
   switch (status) {
@@ -11,6 +11,19 @@ const getStatusStyle = (status) => {
 };
 
 export default function CuttingTable({ orders = [], loading, onEdit }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
+
+  const totalPages = Math.ceil(orders.length / rowsPerPage);
+  const paginatedOrders = orders.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [orders.length]);
+
   const getDisplayItems = (order) => {
     return order.items && order.items.length > 0 
       ? order.items 
@@ -45,12 +58,12 @@ export default function CuttingTable({ orders = [], loading, onEdit }) {
               <tr>
                 <td colSpan="6" className="px-6 py-4 text-center text-gray-500">Loading orders...</td>
               </tr>
-            ) : orders.length === 0 ? (
+            ) : paginatedOrders.length === 0 ? (
               <tr>
                 <td colSpan="6" className="px-6 py-4 text-center text-gray-500">No orders found.</td>
               </tr>
             ) : (
-              orders.map((order) => {
+              paginatedOrders.map((order) => {
                 const displayItems = getDisplayItems(order);
                 const types = getChickenTypes(displayItems);
                 const totalWeight = getTotalWeight(displayItems);
@@ -80,6 +93,48 @@ export default function CuttingTable({ orders = [], loading, onEdit }) {
           </tbody>
         </table>
       </div>
+      
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="px-6 py-4 border-t border-[#00000026] flex items-center justify-between">
+          <span className="text-sm text-gray-500">
+            Showing <span className="font-medium text-gray-900">{((currentPage - 1) * rowsPerPage) + 1}</span> to <span className="font-medium text-gray-900">{Math.min(currentPage * rowsPerPage, orders.length)}</span> of <span className="font-medium text-gray-900">{orders.length}</span> orders
+          </span>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+            >
+              <FiChevronLeft className="text-gray-600" />
+            </button>
+            
+            <div className="flex gap-1">
+              {[...Array(totalPages)].map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                    currentPage === i + 1 
+                      ? 'bg-[#465C8F] text-white' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+
+            <button 
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+            >
+              <FiChevronRight className="text-gray-600" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

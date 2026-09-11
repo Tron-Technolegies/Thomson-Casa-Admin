@@ -4,12 +4,13 @@ import { api } from '../../services/api';
 
 export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
   const [customers, setCustomers] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
     customer_id: "",
     delivery_date: "",
     status: "Pending",
     notes: "",
-    items: [{ chicken_type: "Full Chicken", weight: "" }]
+    items: [{ chicken_type: "", weight: "" }]
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -17,6 +18,7 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
   useEffect(() => {
     if (isOpen) {
       fetchCustomers();
+      fetchCategories();
     }
   }, [isOpen]);
 
@@ -31,6 +33,21 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
       }
     } catch (err) {
       console.error("Failed to load customers:", err);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/admin/categories/');
+      if (response.success && response.categories.length > 0) {
+        setCategories(response.categories);
+        setFormData(prev => ({
+          ...prev,
+          items: [{ chicken_type: response.categories[0].name, weight: "" }]
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to load categories:", err);
     }
   };
 
@@ -49,7 +66,7 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
   const addItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { chicken_type: "Full Chicken", weight: "" }]
+      items: [...formData.items, { chicken_type: categories.length > 0 ? categories[0].name : "", weight: "" }]
     });
   };
 
@@ -87,7 +104,7 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
           delivery_date: "",
           status: "Pending",
           notes: "",
-          items: [{ chicken_type: "Full Chicken", weight: "" }]
+          items: [{ chicken_type: categories.length > 0 ? categories[0].name : "", weight: "" }]
         });
         onClose();
       } else {
@@ -201,9 +218,9 @@ export default function CreateOrderModal({ isOpen, onClose, onSuccess }) {
                         className="h-11 w-full appearance-none rounded-xl border border-gray-300 pl-3 pr-8 outline-none focus:border-[#4B5EAA] bg-white text-sm"
                         required
                       >
-                        <option value="Full Chicken">Full Chicken</option>
-                        <option value="Dressed Chicken">Dressed Chicken</option>
-                        <option value="Boneless Chicken">Boneless Chicken</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.name}>{cat.name}</option>
+                        ))}
                       </select>
                       <FiChevronDown className="absolute right-3 top-8 text-gray-500" />
                     </div>

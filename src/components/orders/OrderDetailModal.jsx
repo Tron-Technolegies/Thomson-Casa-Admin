@@ -4,12 +4,13 @@ import { api } from '../../services/api';
 
 export default function OrderDetailModal({ isOpen, onClose, order, onSuccess }) {
   const [customers, setCustomers] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
     customer_id: "",
     delivery_date: "",
     status: "Pending",
     notes: "",
-    items: [{ chicken_type: "Full Chicken", weight: "" }]
+    items: [{ chicken_type: "", weight: "" }]
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -17,6 +18,7 @@ export default function OrderDetailModal({ isOpen, onClose, order, onSuccess }) 
   useEffect(() => {
     if (isOpen) {
       fetchCustomers();
+      fetchCategories();
     }
   }, [isOpen]);
 
@@ -26,7 +28,7 @@ export default function OrderDetailModal({ isOpen, onClose, order, onSuccess }) 
       if (order.items && order.items.length > 0) {
         initialItems = order.items.map(i => ({ chicken_type: i.chicken_type, weight: i.weight }));
       } else {
-        initialItems = [{ chicken_type: order.chicken_type || "Full Chicken", weight: order.weight || "" }];
+        initialItems = [{ chicken_type: order.chicken_type || "", weight: order.weight || "" }];
       }
 
       setFormData({
@@ -50,6 +52,17 @@ export default function OrderDetailModal({ isOpen, onClose, order, onSuccess }) 
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/admin/categories/');
+      if (response.success && response.categories.length > 0) {
+        setCategories(response.categories);
+      }
+    } catch (err) {
+      console.error("Failed to load categories:", err);
+    }
+  };
+
   if (!isOpen || !order) return null;
 
   const handleChange = (e) => {
@@ -65,7 +78,7 @@ export default function OrderDetailModal({ isOpen, onClose, order, onSuccess }) 
   const addItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { chicken_type: "Full Chicken", weight: "" }]
+      items: [...formData.items, { chicken_type: categories.length > 0 ? categories[0].name : "", weight: "" }]
     });
   };
 
@@ -210,9 +223,10 @@ export default function OrderDetailModal({ isOpen, onClose, order, onSuccess }) 
                         className="h-11 w-full appearance-none rounded-xl border border-gray-300 pl-3 pr-8 outline-none focus:border-[#4B5EAA] bg-white text-sm"
                         required
                       >
-                        <option value="Full Chicken">Full Chicken</option>
-                        <option value="Dressed Chicken">Dressed Chicken</option>
-                        <option value="Boneless Chicken">Boneless Chicken</option>
+                        <option value="" disabled>Select category</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.name}>{cat.name}</option>
+                        ))}
                       </select>
                       <FiChevronDown className="absolute right-3 top-8 text-gray-500" />
                     </div>
@@ -244,6 +258,58 @@ export default function OrderDetailModal({ isOpen, onClose, order, onSuccess }) 
                 ))}
               </div>
             </div>
+
+            {/* Yield Report */}
+            {order.status !== 'Pending' && order.items && order.items.some(i => i.received_quantity || i.waste_quantity || i.meat_delivered) && (
+              <div className="md:col-span-2 mt-4">
+                <h3 className="text-lg font-bold text-gray-900 mb-3">Production & Yield Report</h3>
+                
+                <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden overflow-x-auto">
+                  <table className="w-full text-left text-sm min-w-[600px]">
+                    <thead className="bg-gray-100 border-b border-gray-200 text-gray-600">
+                      <tr>
+                        <th className="px-4 py-3 font-semibold">Category</th>
+                        <th className="px-4 py-3 font-semibold text-right">Price/kg</th>
+                        <th className="px-4 py-3 font-semibold text-right">Received</th>
+                        <th className="px-4 py-3 font-semibold text-right">Waste</th>
+                        <th className="px-4 py-3 font-semibold text-right">Output Meat</th>
+                        <th className="px-4 py-3 font-semibold text-right">Exp. Value</th>
+                        <th className="px-4 py-3 font-semibold text-right">Act. Value</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {order.items.map((item, index) => (
+                        <tr key={index}>
+                          <td className="px-4 py-3 font-medium text-gray-900">{item.chicken_type}</td>
+                          <td className="px-4 py-3 text-right">₹{item.price_per_kg || "0.00"}</td>
+                          <td className="px-4 py-3 text-right">{item.received_quantity || "-"} kg</td>
+                          <td className="px-4 py-3 text-right text-red-600">{item.waste_quantity || "-"} kg</td>
+                          <td className="px-4 py-3 text-right text-green-600 font-medium">{item.meat_delivered || "-"} kg</td>
+                          <td className="px-4 py-3 text-right">₹{item.expected_price || "0.00"}</td>
+                          <td className="px-4 py-3 text-right font-medium">₹{item.actual_price || "0.00"}</td>
+                        </tr>
+                      ))}
+                      <tr className="bg-gray-100/80 font-semibold text-gray-900">
+                        <td colSpan="2" className="px-4 py-3">Total</td>
+                        <td className="px-4 py-3 text-right">{order.total_received || "0"} kg</td>
+                        <td className="px-4 py-3 text-right text-red-600">{order.total_waste || "0"} kg</td>
+                        <td className="px-4 py-3 text-right text-green-600">{order.total_meat || "0"} kg</td>
+                        <td className="px-4 py-3 text-right">₹{order.total_expected_value || "0.00"}</td>
+                        <td className="px-4 py-3 text-right text-[#4B5EAA]">₹{order.total_actual_value || "0.00"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Cutting Notes */}
+                {order.cutting_notes && (
+                  <div className="mt-3 p-3 bg-yellow-50 text-yellow-800 rounded-xl text-sm border border-yellow-200">
+                    <span className="font-semibold">Cutting Team Note: </span>
+                    {order.cutting_notes}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Notes */}
             <div className="md:col-span-2">

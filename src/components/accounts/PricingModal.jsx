@@ -9,18 +9,44 @@ export default function PricingModal({ isOpen, onClose, account, dailyPrices = {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [customerPrices, setCustomerPrices] = useState({});
+
+  useEffect(() => {
+    const fetchCustomerPrices = async () => {
+      if (account && account.customer_id) {
+        try {
+          const res = await api.get(`/admin/customers/${account.customer_id}/prices/`);
+          if (res.success) {
+            setCustomerPrices(res.prices || {});
+          } else {
+            setCustomerPrices({});
+          }
+        } catch (err) {
+          console.error("Failed to fetch customer prices", err);
+        }
+      }
+    };
+    fetchCustomerPrices();
+  }, [account]);
+
   useEffect(() => {
     if (account && account.items) {
       const initialPrices = {};
       account.items.forEach(item => {
-        initialPrices[item.id] = item.price_per_kg || "";
+        if (item.price_per_kg) {
+          initialPrices[item.id] = item.price_per_kg;
+        } else if (customerPrices[item.chicken_type]) {
+          initialPrices[item.id] = customerPrices[item.chicken_type];
+        } else {
+          initialPrices[item.id] = "";
+        }
       });
       setItemPrices(initialPrices);
       setGstType("fixed");
       setGstInput("");
       setError("");
     }
-  }, [account]);
+  }, [account, customerPrices]);
 
   if (!isOpen || !account) return null;
 
@@ -181,9 +207,13 @@ export default function PricingModal({ isOpen, onClose, account, dailyPrices = {
                   <tbody className="divide-y divide-gray-200">
                     {account.items && account.items.map(item => {
                       const marketPrice = dailyPrices[item.chicken_type] || 0;
+                      const customPrice = customerPrices[item.chicken_type];
                       return (
                         <tr key={item.id} className="bg-white hover:bg-gray-50 transition">
-                          <td className="px-4 py-3 font-medium text-gray-800">{item.chicken_type}</td>
+                          <td className="px-4 py-3 font-medium text-gray-800">
+                            {item.chicken_type}
+                            {customPrice && <span className="ml-2 text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">Custom Rate</span>}
+                          </td>
                           <td className="px-4 py-3 text-right text-gray-600">{item.weight}</td>
                           <td className="px-4 py-3 text-right text-orange-500 font-semibold">₹{marketPrice || "---"}</td>
                           <td className="px-4 py-2">

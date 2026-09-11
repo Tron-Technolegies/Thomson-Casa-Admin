@@ -42,35 +42,7 @@ export default function OrderTable({
 
   return (
     <div>
-      {/* Tabs and Filter */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div className="flex flex-wrap gap-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition ${
-                activeTab === tab 
-                  ? "bg-[#4B5EAA] text-white" 
-                  : "bg-white text-gray-600 border border-[#00000026] hover:bg-gray-50"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-        
-        <div className="flex items-center gap-2 bg-white border border-[#00000026] rounded-full px-4 py-2">
-          <input 
-            type="date"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="text-sm font-semibold text-gray-700 outline-none"
-          />
-        </div>
-      </div>
 
-      {/* Table */}
       <div className="bg-white border border-[#00000026] rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-gray-600">
