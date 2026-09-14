@@ -74,7 +74,11 @@ export default function OrderTable({
                   const totalWeight = getTotalWeight(displayItems);
                   
                   return (
-                  <tr key={order.id} className="hover:bg-gray-50">
+                  <tr 
+                    key={order.id} 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => onEdit && onEdit(order)}
+                  >
                     <td className="px-6 py-4 font-medium text-gray-900">{order.order_number}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{order.customer}</td>
                     <td className="px-6 py-4">{new Date(order.created_at).toLocaleDateString()}</td>
@@ -89,13 +93,13 @@ export default function OrderTable({
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-3">
                         <button 
-                          onClick={() => onEdit && onEdit(order)}
+                          onClick={(e) => { e.stopPropagation(); onEdit && onEdit(order); }}
                           className="text-gray-600 hover:text-[#4B5EAA] transition"
                         >
                           <FiEdit2 size={18} />
                         </button>
                         <button 
-                          onClick={() => onDelete && onDelete(order)}
+                          onClick={(e) => { e.stopPropagation(); onDelete && onDelete(order); }}
                           className="text-gray-600 hover:text-red-500 transition"
                         >
                           <FiTrash2 size={18} />

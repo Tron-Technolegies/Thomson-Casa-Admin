@@ -1,4 +1,5 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 import {
   MdOutlineDashboard,
@@ -9,6 +10,7 @@ import {
   MdAnalytics,
   MdReceipt,
   MdClose,
+  MdLogout,
 } from "react-icons/md";
 import { BiPurchaseTagAlt } from "react-icons/bi";
 import { VscCreditCard, VscGraph } from "react-icons/vsc";
@@ -105,10 +107,23 @@ const menus = [
   //     name: "Invoice",
   //     icon: <TbInvoice size={22} />,
   //     path: "/invoice",
-  //   },
+    {
+    name: "Staff Management",
+    icon: <MdPeople size={22} />,
+    path: "/staff",
+    adminOnly: true,
+  },
 ];
 
 function Sidebar({ sidebarOpen, setSidebarOpen }) {
+  const { logout, user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -140,26 +155,37 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
         {/* Menu */}
 
-        <nav className="mt-6 px-4 space-y-2">
-          {menus.map((menu) => (
-            <NavLink
-              key={menu.path}
-              to={menu.path}
-              onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-4 px-4 py-3 rounded-xl transition
-                 ${
-                   isActive
-                     ? "bg-[#465C8F24] text-[#465C8F] font-semibold"
-                     : "text-gray-600 hover:bg-gray-100"
-                 }`
-              }
-            >
-              {menu.icon}
+        <nav className="mt-6 px-4 space-y-2 h-[calc(100vh-140px)] overflow-y-auto pb-6 custom-scrollbar">
+          {menus.map((menu) => {
+            return (
+              <NavLink
+                key={menu.path}
+                to={menu.path}
+                onClick={() => setSidebarOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-4 px-4 py-3 rounded-xl transition
+                   ${
+                     isActive
+                       ? "bg-[#465C8F24] text-[#465C8F] font-semibold"
+                       : "text-gray-600 hover:bg-gray-100"
+                   }`
+                }
+              >
+                {menu.icon}
 
-              <span>{menu.name}</span>
-            </NavLink>
-          ))}
+                <span>{menu.name}</span>
+              </NavLink>
+            );
+          })}
+          
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-4 px-4 py-3 rounded-xl transition w-full text-left text-gray-600 hover:bg-red-50 hover:text-red-600"
+          >
+            <MdLogout size={22} />
+            <span>Logout</span>
+          </button>
         </nav>
       </aside>
     </>

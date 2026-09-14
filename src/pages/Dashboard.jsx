@@ -5,6 +5,7 @@ import CustomerRevenue from "../components/dashboard/CustomerRevenue";
 import CustomerBalance from "../components/dashboard/CustomerBalance";
 import TopCustomers from "../components/dashboard/TopCustomers";
 import RecentOrders from "../components/dashboard/RecentOrders";
+import DailyYieldCard from "../components/dashboard/DailyYieldCard";
 
 export default function Dashboard() {
   return (
@@ -12,8 +13,9 @@ export default function Dashboard() {
       <StatCards />
       <SalesCharts />
       
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+        <div className="flex flex-col gap-6">
+          <DailyYieldCard />
           <CustomerRevenue />
         </div>
         <div className="flex flex-col gap-6">
