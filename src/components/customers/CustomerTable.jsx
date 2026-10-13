@@ -16,11 +16,15 @@ const getStatusColor = (status) => {
   return status?.toLowerCase() === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600";
 };
 
+
 const getScoreColor = (score) => {
-  if (score >= 80) return "bg-green-100 text-green-700";
-  if (score >= 50) return "bg-yellow-100 text-yellow-700";
+  if (score >= 85) return "bg-green-100 text-green-700";
+  if (score >= 70) return "bg-blue-100 text-blue-700";
+  if (score >= 55) return "bg-yellow-100 text-yellow-700";
+  if (score >= 40) return "bg-orange-100 text-orange-700";
   return "bg-red-100 text-red-700";
 };
+
 
 export default function CustomerTable({ customers = [], loading, onPreview, onEdit, onDelete }) {
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,11 +53,11 @@ export default function CustomerTable({ customers = [], loading, onPreview, onEd
         <tbody className="divide-y divide-gray-100">
           {loading ? (
             <tr>
-              <td colSpan="7" className="px-6 py-4 text-center text-gray-500">Loading customers...</td>
+              <td colSpan={8} className="px-6 py-4 text-center text-gray-500">Loading customers...</td>
             </tr>
           ) : customers.length === 0 ? (
             <tr>
-              <td colSpan="7" className="px-6 py-4 text-center text-gray-500">No customers found.</td>
+              <td colSpan={8} className="px-6 py-4 text-center text-gray-500">No customers found.</td>
             </tr>
           ) : (
             currentCustomers.map((cust) => (
@@ -66,11 +70,35 @@ export default function CustomerTable({ customers = [], loading, onPreview, onEd
                 <td className="px-6 py-4">{cust.company_name}</td>
                 <td className="px-6 py-4">{cust.phone}</td>
                 <td className="px-6 py-4 truncate max-w-[150px]" title={cust.address}>{cust.address}</td>
+
                 <td className="px-6 py-4 text-center">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${getScoreColor(cust.performance_score)}`}>
-                    {cust.performance_score} / 100
-                  </span>
+                  <div className="flex flex-col items-center gap-2">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-bold ${getScoreColor(
+                        cust.performance_score
+                      )}`}
+                    >
+                      {cust.performance_score ?? 0} / 100
+                    </span>
+
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        cust.performance_category === "Excellent"
+                          ? "bg-green-100 text-green-700"
+                          : cust.performance_category === "Good"
+                          ? "bg-blue-100 text-blue-700"
+                          : cust.performance_category === "Watch Carefully"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : cust.performance_category === "Reduce Credit"
+                          ? "bg-orange-100 text-orange-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {cust.performance_category || "High Risk"}
+                    </span>
+                  </div>
                 </td>
+
                 <td className="px-6 py-4 text-center">
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(cust.customer_type)} capitalize`}>
                     {cust.customer_type?.replace('_', ' ')}

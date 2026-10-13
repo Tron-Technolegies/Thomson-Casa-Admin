@@ -151,6 +151,24 @@ Score: ${displayCustomer.performance_score || 0} / 100`;
                     {displayCustomer.performance_score} <span className="text-xs opacity-70">/ 100</span>
                   </div>
                 </div>
+
+                
+                <span
+                  className={`mt-2 px-3 py-1 rounded-full text-xs font-semibold ${
+                    displayCustomer.performance_category === "Excellent"
+                      ? "bg-green-100 text-green-700"
+                      : displayCustomer.performance_category === "Good"
+                      ? "bg-blue-100 text-blue-700"
+                      : displayCustomer.performance_category === "Watch Carefully"
+                      ? "bg-yellow-100 text-yellow-700"
+                      : displayCustomer.performance_category === "Reduce Credit"
+                      ? "bg-orange-100 text-orange-700"
+                      : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {displayCustomer.performance_category || "High Risk"}
+                </span>
+
               </div>
 
               {/* Purchase History */}
