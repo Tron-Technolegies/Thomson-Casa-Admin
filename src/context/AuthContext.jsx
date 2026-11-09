@@ -119,15 +119,32 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Login error:', error);
 
+      const errorMessage = error.message?.toLowerCase() || '';
+
+      if (
+        errorMessage.includes('no active account') ||
+        errorMessage.includes('invalid credentials') ||
+        errorMessage.includes('invalid username') ||
+        errorMessage.includes('401') ||
+        errorMessage.includes('credential')
+      ) {
+        return {
+          success: false,
+          error: 'Invalid email or password. Please try again.'
+        };
+      }
+
       return {
         success: false,
-        error: error.message || 'Login failed. Please try again.'
+        error: 'Unable to log in. Please try again later.'
       };
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    api.clearCache();
+
+    localStorage.removeItem("token");
     setToken(null);
     setUser(null);
   };
