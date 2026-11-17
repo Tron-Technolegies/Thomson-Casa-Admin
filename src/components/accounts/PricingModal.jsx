@@ -48,6 +48,8 @@ export default function PricingModal({
           initialPrices[item.id] = item.price_per_kg;
         } else if (customerPrices[item.chicken_type]) {
           initialPrices[item.id] = customerPrices[item.chicken_type];
+        } else if (dailyPrices[item.chicken_type]) {
+          initialPrices[item.id] = dailyPrices[item.chicken_type];
         } else {
           initialPrices[item.id] = "";
         }
@@ -58,7 +60,7 @@ export default function PricingModal({
       setGstInput("");
       setError("");
     }
-  }, [account, customerPrices]);
+  }, [account, customerPrices, dailyPrices]);
 
   if (!isOpen || !account) return null;
 
@@ -69,10 +71,36 @@ export default function PricingModal({
     }));
   };
 
+const getYieldPercentage = (item) => {
+  return (
+    parseFloat(
+      item.approx_yield_percentage ??
+      item.yield_percentage ??
+      item.category_yield_percentage
+    ) || 0
+  );
+};
+
+  const getLiveRate = (item) => {
+    return parseFloat(itemPrices[item.id]) || 0;
+  };
+
+  const getMeatRate = (item) => {
+    const liveRate = getLiveRate(item);
+    const yieldPercentage = getYieldPercentage(item);
+
+    if (liveRate <= 0 || yieldPercentage <= 0) {
+      return 0;
+    }
+
+    return (liveRate * 100) / yieldPercentage;
+  };
+
   const getSubtotal = (item) => {
-    const price = parseFloat(itemPrices[item.id]) || 0;
+    const meatRate = getMeatRate(item);
     const weight = parseFloat(item.weight) || 0;
-    return price * weight;
+
+    return meatRate * weight;
   };
 
   const itemsTotal =
