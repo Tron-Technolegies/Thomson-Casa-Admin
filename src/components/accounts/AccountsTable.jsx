@@ -1,6 +1,12 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { FiEdit2 } from "react-icons/fi";
+
+import SortDropdown from "../common/SortDropdown";
+import {
+  sortRecords,
+  getAvailableSortFields,
+} from "../../utils/sortUtils";
 
 const getStatusStyle = (status) => {
   switch (status) {
@@ -19,40 +25,145 @@ const getStatusStyle = (status) => {
   }
 };
 
-export default function AccountsTable({ orders = [], loading, onEdit }) {
-  const getDisplayItems = (order) => {
-    return order.items && order.items.length > 0
-      ? order.items
-      : [{ chicken_type: order.chicken_type, weight: order.weight }];
+const getDisplayItems = (order) =>
+  order.items && order.items.length > 0
+    ? order.items
+    : [
+        {
+          chicken_type: order.chicken_type,
+          weight: order.weight,
+        },
+      ];
+
+const getChickenTypes = (items) =>
+  [
+    ...new Set(
+      items
+        .map((item) => item.chicken_type)
+        .filter(Boolean)
+    ),
+  ].join(" + ");
+
+const getTotalWeight = (items) =>
+  items.reduce(
+    (sum, item) => sum + Number(item.weight || 0),
+    0
+  );
+
+const getFormattedDate = (value) => {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : date.toLocaleDateString("en-IN");
+};
+
+const formatAmount = (value) =>
+  Number(value || 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+const renderPrice = (row) =>
+  row.invoice ? (
+    <span className="font-bold text-gray-900">
+      ₹ {formatAmount(row.invoice.total_amount)}
+    </span>
+  ) : (
+    <span className="text-gray-400 font-normal">
+      Unpriced
+    </span>
+  );
+
+export default function AccountsTable({
+  orders = [],
+  loading = false,
+  onEdit,
+}) {
+  const [sortBy, setSortBy] = useState("newest");
+
+  const sortingConfig = {
+    nameKeys: ["customer"],
+    dateKeys: ["created_at", "delivery_date"],
+    amountKeys: ["sort_amount"],
+    idKeys: ["id", "order_number"],
   };
 
-  const getChickenTypes = (items) => {
-    return [...new Set(items.map((i) => i.chicken_type))].join(" + ");
-  };
+  const preparedOrders = orders.map((order) => ({
+    ...order,
+    sort_amount:
+      order.invoice?.total_amount ??
+      null,
+  }));
 
-  const getTotalWeight = (items) => {
-    return items.reduce(
-      (sum, item) => sum + Number(item.weight || 0),
-      0
+  const availableSort = getAvailableSortFields(
+    preparedOrders,
+    sortingConfig
+  );
+
+  // Keep unpriced orders after priced ones
+  // when sorting by invoice amount.
+  const sortedOrders = (() => {
+    if (sortBy === "high" || sortBy === "low") {
+      const priced = preparedOrders.filter(
+        (order) =>
+          order.sort_amount !== null &&
+          order.sort_amount !== undefined &&
+          Number.isFinite(
+            Number(order.sort_amount)
+          )
+      );
+
+      const unpriced = preparedOrders.filter(
+        (order) =>
+          order.sort_amount === null ||
+          order.sort_amount === undefined ||
+          !Number.isFinite(
+            Number(order.sort_amount)
+          )
+      );
+
+      return [
+        ...sortRecords(
+          priced,
+          sortBy,
+          sortingConfig
+        ),
+        ...unpriced,
+      ];
+    }
+
+    return sortRecords(
+      preparedOrders,
+      sortBy,
+      sortingConfig
     );
-  };
-
-  const getFormattedDate = (date) => {
-    return date ? new Date(date).toLocaleDateString() : "-";
-  };
-
-  const renderPrice = (row) => {
-    return row.invoice ? (
-      <span className="font-bold text-gray-900">
-        ₹ {row.invoice.total_amount}
-      </span>
-    ) : (
-      <span className="text-gray-400 font-normal">Unpriced</span>
-    );
-  };
+  })();
 
   return (
-    <div className="mt-4 sm:mt-6 bg-white border border-[#00000026] rounded-xl overflow-hidden">
+    <div className="mt-4 sm:mt-6 w-full min-w-0 bg-white border border-[#00000026] rounded-xl overflow-hidden">
+
+      {/* Header and Sorting */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-5 border-b border-gray-200">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">
+            Accounts Order Records
+          </h2>
+
+          <p className="text-xs text-gray-500 mt-1">
+            Showing {sortedOrders.length} orders
+          </p>
+        </div>
+
+        <SortDropdown
+          value={sortBy}
+          onChange={setSortBy}
+          allowDate={availableSort.allowDate}
+          allowAmount={availableSort.allowAmount}
+        />
+      </div>
 
       {/* Desktop / Tablet Table */}
       <div className="hidden md:block overflow-x-auto">
@@ -75,26 +186,26 @@ export default function AccountsTable({ orders = [], loading, onEdit }) {
             {loading ? (
               <tr>
                 <td
-                  colSpan="9"
+                  colSpan={9}
                   className="px-6 py-8 text-center text-gray-500"
                 >
                   Loading orders...
                 </td>
               </tr>
-            ) : orders.length === 0 ? (
+            ) : sortedOrders.length === 0 ? (
               <tr>
                 <td
-                  colSpan="9"
+                  colSpan={9}
                   className="px-6 py-8 text-center text-gray-500"
                 >
                   No ready/delivered orders found.
                 </td>
               </tr>
             ) : (
-              orders.map((row) => {
-                const displayItems = getDisplayItems(row);
-                const types = getChickenTypes(displayItems);
-                const totalWeight = getTotalWeight(displayItems);
+              sortedOrders.map((row) => {
+                const items = getDisplayItems(row);
+                const types = getChickenTypes(items);
+                const weight = getTotalWeight(items);
 
                 return (
                   <tr
@@ -118,16 +229,18 @@ export default function AccountsTable({ orders = [], loading, onEdit }) {
                     </td>
 
                     <td className="px-6 py-4 font-medium text-gray-900">
-                      {types}
+                      {types || "-"}
                     </td>
 
                     <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
-                      {totalWeight} Kg
+                      {weight} Kg
                     </td>
 
                     <td className="px-6 py-4 text-center">
                       <span
-                        className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${getStatusStyle(row.status)}`}
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${getStatusStyle(
+                          row.status
+                        )}`}
                       >
                         {row.status}
                       </span>
@@ -140,7 +253,7 @@ export default function AccountsTable({ orders = [], loading, onEdit }) {
                     <td className="px-6 py-4 text-center">
                       <button
                         type="button"
-                        onClick={() => onEdit(row)}
+                        onClick={() => onEdit?.(row)}
                         className="text-gray-600 hover:text-[#4B5EAA] cursor-pointer transition"
                         aria-label={`Edit order ${row.order_number}`}
                       >
@@ -161,53 +274,57 @@ export default function AccountsTable({ orders = [], loading, onEdit }) {
           <div className="px-4 py-10 text-center text-sm text-gray-500">
             Loading orders...
           </div>
-        ) : orders.length === 0 ? (
+        ) : sortedOrders.length === 0 ? (
           <div className="px-4 py-10 text-center text-sm text-gray-500">
             No ready/delivered orders found.
           </div>
         ) : (
-          orders.map((row) => {
-            const displayItems = getDisplayItems(row);
-            const types = getChickenTypes(displayItems);
-            const totalWeight = getTotalWeight(displayItems);
+          sortedOrders.map((row) => {
+            const items = getDisplayItems(row);
+            const types = getChickenTypes(items);
+            const weight = getTotalWeight(items);
 
             return (
-              <div key={row.id} className="p-4 space-y-4">
-
-                {/* Order Number and Status */}
+              <div
+                key={row.id}
+                className="p-4 space-y-4"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-xs text-gray-400 font-medium">
                       ORDER NO
                     </p>
+
                     <h3 className="text-sm font-bold text-gray-900 break-words">
                       {row.order_number}
                     </h3>
                   </div>
 
                   <span
-                    className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold ${getStatusStyle(row.status)}`}
+                    className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold ${getStatusStyle(
+                      row.status
+                    )}`}
                   >
                     {row.status}
                   </span>
                 </div>
 
-                {/* Customer */}
                 <div>
                   <p className="text-xs text-gray-400 mb-1">
                     Customer
                   </p>
+
                   <p className="text-sm font-semibold text-gray-800 break-words">
                     {row.customer}
                   </p>
                 </div>
 
-                {/* Dates */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-xs text-gray-400 mb-1">
                       Order Date
                     </p>
+
                     <p className="text-sm font-medium text-gray-800">
                       {getFormattedDate(row.created_at)}
                     </p>
@@ -217,20 +334,21 @@ export default function AccountsTable({ orders = [], loading, onEdit }) {
                     <p className="text-xs text-gray-400 mb-1">
                       Delivery Date
                     </p>
+
                     <p className="text-sm font-medium text-gray-800">
                       {row.delivery_date || "-"}
                     </p>
                   </div>
                 </div>
 
-                {/* Chicken Type and Weight */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="min-w-0">
                     <p className="text-xs text-gray-400 mb-1">
                       Chicken Type
                     </p>
+
                     <p className="text-sm font-medium text-gray-800 break-words">
-                      {types}
+                      {types || "-"}
                     </p>
                   </div>
 
@@ -238,18 +356,19 @@ export default function AccountsTable({ orders = [], loading, onEdit }) {
                     <p className="text-xs text-gray-400 mb-1">
                       Total Weight
                     </p>
+
                     <p className="text-sm font-semibold text-gray-900">
-                      {totalWeight} Kg
+                      {weight} Kg
                     </p>
                   </div>
                 </div>
 
-                {/* Price */}
-                <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+                <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
                   <div>
                     <p className="text-xs text-gray-400 mb-1">
                       Total Price
                     </p>
+
                     <p className="text-sm">
                       {renderPrice(row)}
                     </p>
@@ -257,20 +376,18 @@ export default function AccountsTable({ orders = [], loading, onEdit }) {
 
                   <button
                     type="button"
-                    onClick={() => onEdit(row)}
+                    onClick={() => onEdit?.(row)}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#465C8F] text-white text-sm font-medium hover:bg-[#384C79] transition"
                   >
                     <FiEdit2 size={15} />
                     Edit
                   </button>
                 </div>
-
               </div>
             );
           })
         )}
       </div>
-
     </div>
   );
 }

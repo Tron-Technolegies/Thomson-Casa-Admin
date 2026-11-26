@@ -1,7 +1,13 @@
 
-// import React from "react";
+import React, { useState } from "react";
 import { FaFilePdf } from "react-icons/fa";
 import { BASE_URL } from "../../services/api";
+import SortDropdown from "../common/SortDropdown";
+
+import {
+  sortRecords,
+  getAvailableSortFields,
+} from "../../utils/sortUtils";
 
 const badge = {
   Paid: "bg-green-100 text-green-700",
@@ -9,18 +15,47 @@ const badge = {
   Unpaid: "bg-red-100 text-red-700",
 };
 
-function RecentTransactions({ sales = [], loading = false }) {
-  const recentSales = sales.slice(0, 10);
+const formatAmount = (amount) =>
+  Number(amount || 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
-  const formatAmount = (amount) =>
-    amount.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+function RecentTransactions({
+  sales = [],
+  loading = false,
+}) {
+  const [sortBy, setSortBy] = useState("newest");
+
+  const sortingConfig = {
+    nameKeys: ["customer"],
+    dateKeys: ["created_at", "date"],
+    amountKeys: ["amount"],
+    idKeys: ["invoice_no"],
+  };
+
+  const availableSort = getAvailableSortFields(
+    sales,
+    sortingConfig
+  );
+
+  // Sort all currently fetched transactions.
+  const sortedSales = sortRecords(
+    sales,
+    sortBy,
+    sortingConfig
+  );
+
+  // Show first ten after sorting.
+  const recentSales = sortedSales.slice(0, 10);
 
   const handleDownloadPDF = () => {
+    const params = new URLSearchParams({
+      sort_by: sortBy,
+    });
+
     window.open(
-      `${BASE_URL}/accounts/reports/sales/pdf/`,
+      `${BASE_URL}/accounts/reports/sales/pdf/?${params.toString()}`,
       "_blank"
     );
   };
@@ -29,18 +64,40 @@ function RecentTransactions({ sales = [], loading = false }) {
     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden w-full">
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-4 sm:p-6 border-b border-[#00000026]">
-        <h2 className="text-lg sm:text-2xl font-semibold text-gray-900">
-          Recent Transactions
-        </h2>
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3 p-4 sm:p-6 border-b border-[#00000026]">
 
-        <button
-          onClick={handleDownloadPDF}
-          className="w-full sm:w-auto flex items-center justify-center bg-red-100 text-red-500 px-4 py-2.5 rounded-lg font-medium text-sm hover:bg-red-200 transition cursor-pointer"
-        >
-          <FaFilePdf className="mr-2" />
-          Download PDF
-        </button>
+        <div>
+          <h2 className="text-lg sm:text-2xl font-semibold text-gray-900">
+            Recent Transactions
+          </h2>
+
+          <p className="text-xs text-gray-500 mt-1">
+            Showing {recentSales.length} of{" "}
+            {sales.length} transactions
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+
+          {/* Common Sort */}
+          <SortDropdown
+            value={sortBy}
+            onChange={setSortBy}
+            allowDate={availableSort.allowDate}
+            allowAmount={availableSort.allowAmount}
+          />
+
+          {/* PDF */}
+          <button
+            type="button"
+            onClick={handleDownloadPDF}
+            disabled={loading || recentSales.length === 0}
+            className="w-full sm:w-auto flex items-center justify-center bg-red-100 text-red-500 px-4 py-2.5 rounded-lg font-medium text-sm hover:bg-red-200 transition cursor-pointer disabled:opacity-50"
+          >
+            <FaFilePdf className="mr-2" />
+            Download PDF
+          </button>
+        </div>
       </div>
 
       {/* Loading State */}
@@ -48,8 +105,7 @@ function RecentTransactions({ sales = [], loading = false }) {
         <div className="text-center py-10 text-gray-500 text-sm">
           Loading transactions...
         </div>
-      ) : sales.length === 0 ? (
-        /* Empty State */
+      ) : recentSales.length === 0 ? (
         <div className="text-center py-10 text-gray-500 text-sm">
           No transactions found.
         </div>
@@ -60,18 +116,32 @@ function RecentTransactions({ sales = [], loading = false }) {
             <table className="w-full text-left">
               <thead className="bg-gray-50 text-gray-500 text-sm">
                 <tr>
-                  <th className="p-4 font-semibold">Invoice No</th>
-                  <th className="p-4 font-semibold">Customer</th>
-                  <th className="p-4 font-semibold">Date</th>
-                  <th className="p-4 font-semibold">Amount</th>
-                  <th className="p-4 font-semibold">Status</th>
+                  <th className="p-4 font-semibold">
+                    Invoice No
+                  </th>
+
+                  <th className="p-4 font-semibold">
+                    Customer
+                  </th>
+
+                  <th className="p-4 font-semibold">
+                    Date
+                  </th>
+
+                  <th className="p-4 font-semibold">
+                    Amount
+                  </th>
+
+                  <th className="p-4 font-semibold">
+                    Status
+                  </th>
                 </tr>
               </thead>
 
               <tbody>
                 {recentSales.map((item, index) => (
                   <tr
-                    key={index}
+                    key={item.invoice_no ?? index}
                     className="border-t border-[#00000026] hover:bg-gray-50 transition"
                   >
                     <td className="p-4 font-bold text-[#4B5EAA]">
@@ -106,14 +176,15 @@ function RecentTransactions({ sales = [], loading = false }) {
             </table>
           </div>
 
-          {/* Mobile Transaction Cards */}
+          {/* Mobile Cards */}
           <div className="md:hidden p-3 sm:p-4 space-y-3">
             {recentSales.map((item, index) => (
               <div
-                key={index}
+                key={item.invoice_no ?? index}
                 className="border border-gray-200 rounded-xl p-4 shadow-sm hover:bg-gray-50 transition"
               >
-                {/* Invoice and Status */}
+
+                {/* Invoice & Status */}
                 <div className="flex justify-between items-start gap-3 mb-4">
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
@@ -135,9 +206,9 @@ function RecentTransactions({ sales = [], loading = false }) {
                   </span>
                 </div>
 
-                {/* Customer and Date */}
+                {/* Customer & Date */}
                 <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="min-w-0">
+                  <div>
                     <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">
                       Customer
                     </p>
@@ -152,7 +223,7 @@ function RecentTransactions({ sales = [], loading = false }) {
                       Date
                     </p>
 
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 break-words">
                       {item.date}
                     </p>
                   </div>

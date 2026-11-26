@@ -1,10 +1,9 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  FiTrendingUp,
   FiDollarSign,
   FiShoppingCart,
-  FiAlertCircle,
+  FiTrendingUp,
   FiDownload,
 } from "react-icons/fi";
 import {
@@ -16,97 +15,207 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+
 import { api } from "../../services/api";
 import { exportTableToPDF } from "../../utils/pdfGenerator";
 import Pagination from "../common/Pagination";
+import SortDropdown from "../common/SortDropdown";
 
-export default function CustomerPurchaseReport({ period = "Daily" }) {
+import {
+  sortRecords,
+  getAvailableSortFields,
+} from "../../utils/sortUtils";
+
+const number = (value) => Number(value) || 0;
+
+const money = (value) =>
+  number(value).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+export default function CustomerPurchaseReport({
+  period = "Daily",
+}) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sortConfig, setSortConfig] = useState({
-    key: null,
-    direction: "asc",
-  });
   const [currentPage, setCurrentPage] = useState(1);
+
+  const [sortBy, setSortBy] = useState("az");
+
+  // Keeps existing column-specific sorting
+  const [columnSort, setColumnSort] = useState(null);
+
   const itemsPerPage = 10;
 
   useEffect(() => {
+    let active = true;
+
     const fetchReport = async () => {
+      setLoading(true);
+      setCurrentPage(1);
+
       try {
         const res = await api.get(
-          `/admin/reports/customers/?period=${period}`
+          `/admin/reports/customers/?period=${encodeURIComponent(
+            period
+          )}`
         );
 
-        if (res.success) {
-          setCustomers(res.customers_report || []);
-        }
+        if (!active) return;
+
+        setCustomers(
+          res.success && Array.isArray(res.customers_report)
+            ? res.customers_report
+            : []
+        );
       } catch (err) {
-        console.error(err);
+        console.error("Customer purchase report error:", err);
+
+        if (active) {
+          setCustomers([]);
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
     fetchReport();
+
+    return () => {
+      active = false;
+    };
   }, [period]);
 
-  const handleSort = (key) => {
-    let direction = "asc";
-
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-
-    setSortConfig({ key, direction });
+  const sortingConfig = {
+    nameKeys: ["customer"],
+    dateKeys: ["last_order_date", "created_at"],
+    amountKeys: ["total_spent"],
+    idKeys: ["customer_id", "id"],
   };
 
-  const sortedData = [...customers].sort((a, b) => {
-    if (!sortConfig.key) return 0;
+  const availableSort = getAvailableSortFields(
+    customers,
+    sortingConfig
+  );
 
-    const aValue = a[sortConfig.key];
-    const bValue = b[sortConfig.key];
+  const handleCommonSort = (value) => {
+    setSortBy(value);
+    setColumnSort(null);
+    setCurrentPage(1);
+  };
 
-    if (aValue < bValue) {
-      return sortConfig.direction === "asc" ? -1 : 1;
+  const handleSort = (key) => {
+    setColumnSort((previous) => ({
+      key,
+      direction:
+        previous?.key === key &&
+        previous.direction === "asc"
+          ? "desc"
+          : "asc",
+    }));
+
+    setCurrentPage(1);
+  };
+
+  const getSortLabel = (key) => {
+    if (columnSort?.key !== key) return "";
+
+    return columnSort.direction === "asc"
+      ? " ↑"
+      : " ↓";
+  };
+
+  // Apply sorting to ALL fetched report rows
+  const sortedData = useMemo(() => {
+    if (!columnSort) {
+      return sortRecords(
+        customers,
+        sortBy,
+        sortingConfig
+      );
     }
 
-    if (aValue > bValue) {
-      return sortConfig.direction === "asc" ? 1 : -1;
-    }
+    return [...customers].sort((a, b) => {
+      const aValue = a[columnSort.key];
+      const bValue = b[columnSort.key];
 
-    return 0;
-  });
+      const aNumber = Number(aValue);
+      const bNumber = Number(bValue);
 
-  const totalPages = Math.ceil(sortedData.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
+      let result = 0;
+
+      if (
+        aValue != null &&
+        aValue !== "" &&
+        bValue != null &&
+        bValue !== "" &&
+        Number.isFinite(aNumber) &&
+        Number.isFinite(bNumber)
+      ) {
+        result = aNumber - bNumber;
+      } else {
+        result = String(aValue ?? "").localeCompare(
+          String(bValue ?? ""),
+          "en",
+          { numeric: true, sensitivity: "base" }
+        );
+      }
+
+      return columnSort.direction === "asc"
+        ? result
+        : -result;
+    });
+  }, [customers, sortBy, columnSort]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sortedData.length / itemsPerPage)
+  );
+
+  const safePage = Math.min(currentPage, totalPages);
+
+  const startIndex = (safePage - 1) * itemsPerPage;
+
   const currentData = sortedData.slice(
     startIndex,
     startIndex + itemsPerPage
   );
 
+  // Summary totals are based on all filtered API rows.
+  // Sorting never changes the values.
   const totalSpent = customers.reduce(
-    (sum, c) => sum + parseFloat(c.total_spent || 0),
+    (sum, c) => sum + number(c.total_spent),
     0
   );
 
   const totalOrders = customers.reduce(
-    (sum, c) => sum + parseInt(c.total_orders || 0, 10),
+    (sum, c) => sum + number(c.total_orders),
     0
   );
 
   const avgOrderValue =
     totalOrders > 0 ? totalSpent / totalOrders : 0;
 
-  const chartData = customers
+  const chartData = [...customers]
+    .sort(
+      (a, b) =>
+        number(b.total_spent) -
+        number(a.total_spent)
+    )
+    .slice(0, 5)
     .map((c) => ({
       name:
-        c.customer.substring(0, 15) +
-        (c.customer.length > 15 ? "..." : ""),
-      uv: c.total_spent,
-    }))
-    .sort((a, b) => b.uv - a.uv)
-    .slice(0, 5);
+        String(c.customer || "").slice(0, 15) +
+        (String(c.customer || "").length > 15
+          ? "..."
+          : ""),
+      uv: number(c.total_spent),
+    }));
 
+  // Export the same sorted dataset, not one page.
   const handleDownloadPDF = () => {
     const headers = [
       "CUSTOMER NAME",
@@ -116,12 +225,12 @@ export default function CustomerPurchaseReport({ period = "Daily" }) {
       "TOTAL SPENT",
     ];
 
-    const data = customers.map((c) => [
-      c.customer,
-      c.phone,
-      c.total_orders,
-      `${c.total_weight} kg`,
-      `Rs. ${c.total_spent.toLocaleString()}`,
+    const data = sortedData.map((c) => [
+      c.customer || "",
+      c.phone || "",
+      String(c.total_orders ?? 0),
+      `${number(c.total_weight)} kg`,
+      `Rs. ${money(c.total_spent)}`,
     ]);
 
     exportTableToPDF(
@@ -132,209 +241,193 @@ export default function CustomerPurchaseReport({ period = "Daily" }) {
     );
   };
 
-  const getSortLabel = (key) => {
-    if (sortConfig.key !== key) return "";
-    return sortConfig.direction === "asc" ? " ↑" : " ↓";
-  };
+  const stats = [
+    {
+      label: "TOTAL CUSTOMERS",
+      value: String(customers.length),
+      detail: "Active this period",
+      icon: <FiDollarSign size={20} />,
+      color: "bg-blue-100 text-blue-600",
+    },
+    {
+      label: "TOTAL PURCHASES",
+      value: `₹${money(totalSpent)}`,
+      detail: "Total spent by all customers",
+      icon: <FiShoppingCart size={20} />,
+      color: "bg-green-100 text-green-600",
+    },
+    {
+      label: "AVG ORDER VALUE",
+      value: `₹${money(avgOrderValue)}`,
+      detail: "Per order",
+      icon: <FiTrendingUp size={20} />,
+      color: "bg-red-100 text-red-600",
+    },
+  ];
 
   return (
     <div className="w-full min-w-0">
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 mb-6">
+        {stats.map((stat) => (
+          <div
+            key={stat.label}
+            className="bg-white border border-[#00000026] rounded-xl p-5 sm:p-6 shadow-sm"
+          >
+            <div className="flex justify-between items-start gap-3 mb-5">
+              <span className="text-xs font-bold text-gray-400">
+                {stat.label}
+              </span>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-
-        {/* Total Customers */}
-        <div className="bg-white border border-[#00000026] rounded-xl p-4 sm:p-6 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4 gap-2">
-            <span className="text-xs font-bold text-gray-400 tracking-wider">
-              TOTAL CUSTOMERS
-            </span>
-            <div className="bg-blue-100 p-2 rounded-lg text-blue-600 shrink-0">
-              <FiDollarSign size={20} />
+              <div className={`p-2 rounded-lg ${stat.color}`}>
+                {stat.icon}
+              </div>
             </div>
-          </div>
 
-          <div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              {customers.length}
+            <h3 className="text-2xl font-bold text-gray-900 break-words">
+              {stat.value}
             </h3>
-            <div className="flex items-center text-gray-400 text-xs font-semibold gap-1">
-              Active this period
-            </div>
-          </div>
-        </div>
 
-        {/* Total Purchases */}
-        <div className="bg-white border border-[#00000026] rounded-xl p-4 sm:p-6 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4 gap-2">
-            <span className="text-xs font-bold text-gray-400 tracking-wider">
-              TOTAL PURCHASES
-            </span>
-            <div className="bg-green-100 p-2 rounded-lg text-green-600 shrink-0">
-              <FiShoppingCart size={20} />
-            </div>
+            <p className="text-xs text-green-600 mt-3">
+              {stat.detail}
+            </p>
           </div>
-
-          <div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2 break-words">
-              ₹{totalSpent.toLocaleString()}
-            </h3>
-            <div className="flex items-center text-green-600 text-xs font-semibold gap-1">
-              <FiTrendingUp />
-              Total spent by all customers
-            </div>
-          </div>
-        </div>
-
-        {/* Average Order Value */}
-        <div className="bg-white border border-[#00000026] rounded-xl p-4 sm:p-6 shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4 gap-2">
-            <span className="text-xs font-bold text-gray-400 tracking-wider">
-              AVG ORDER VALUE
-            </span>
-            <div className="bg-red-100 p-2 rounded-lg text-red-500 shrink-0">
-              <FiAlertCircle size={20} />
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2 break-words">
-              ₹
-              {avgOrderValue.toLocaleString(undefined, {
-                maximumFractionDigits: 2,
-              })}
-            </h3>
-            <div className="flex items-center text-green-600 text-xs font-semibold gap-1">
-              <FiTrendingUp />
-              Per order
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Customer Purchase Summary */}
-      <div className="bg-white border border-[#00000026] rounded-xl overflow-hidden shadow-sm mb-6 sm:mb-8">
+      <div className="bg-white border border-[#00000026] rounded-xl overflow-hidden shadow-sm mb-6">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 sm:p-6 border-b border-[#00000026] gap-4">
-          <h2 className="text-lg font-bold text-gray-900">
-            Customer Purchase Summary
-          </h2>
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 p-4 sm:p-6 border-b">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">
+              Customer Purchase Summary
+            </h2>
 
-          <button
-            onClick={handleDownloadPDF}
-            className="flex items-center justify-center gap-2 bg-red-100 text-red-500 px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-red-200 transition cursor-pointer w-full sm:w-auto"
-          >
-            <FiDownload size={16} />
-            Download PDF
-          </button>
+            <p className="text-xs text-gray-500 mt-1">
+              {period} — {customers.length} customers
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <SortDropdown
+              value={columnSort ? "custom" : sortBy}
+              onChange={handleCommonSort}
+              allowDate={availableSort.allowDate}
+              allowAmount={availableSort.allowAmount}
+            />
+
+            <button
+              type="button"
+              onClick={handleDownloadPDF}
+              disabled={loading || sortedData.length === 0}
+              className="flex items-center justify-center gap-2 bg-red-100 text-red-500 px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-red-200 disabled:opacity-50"
+            >
+              <FiDownload size={16} />
+              Download PDF
+            </button>
+          </div>
         </div>
 
-        {/* Mobile Sorting */}
-        <div className="md:hidden flex flex-wrap items-center gap-2 p-3 border-b border-[#00000026]">
+        {/* Existing column-specific sort options */}
+        <div className="md:hidden flex flex-wrap items-center gap-2 p-3 border-b border-gray-200">
           <span className="text-xs text-gray-400 font-semibold">
             SORT BY:
           </span>
 
           {[
-            { key: "customer", label: "Customer" },
-            { key: "total_orders", label: "Orders" },
-            { key: "total_weight", label: "Weight" },
-            { key: "total_spent", label: "Spent" },
-          ].map((item) => (
+            ["customer", "Customer"],
+            ["total_orders", "Orders"],
+            ["total_weight", "Weight"],
+            ["total_spent", "Spent"],
+          ].map(([key, label]) => (
             <button
-              key={item.key}
-              onClick={() => handleSort(item.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                sortConfig.key === item.key
-                  ? "bg-[#4B5EAA] text-white border-[#4B5EAA]"
-                  : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+              type="button"
+              key={key}
+              onClick={() => handleSort(key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+                columnSort?.key === key
+                  ? "bg-[#4B5EAA] text-white"
+                  : "bg-gray-50 text-gray-600"
               }`}
             >
-              {item.label}
-              {getSortLabel(item.key)}
+              {label}{getSortLabel(key)}
             </button>
           ))}
         </div>
 
-        {/* Desktop / Tablet Table */}
+        {/* Desktop table */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full min-w-[750px] text-left text-sm text-gray-600">
-            <thead className="bg-[#F8F9FB] text-xs uppercase text-gray-400 font-bold border-b border-[#00000026]">
+            <thead className="bg-[#F8F9FB] text-xs uppercase text-gray-400 font-bold border-b">
               <tr>
-                <th
-                  className="px-6 py-4 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("customer")}
-                >
-                  CUSTOMER NAME {getSortLabel("customer")}
-                </th>
-
-                <th className="px-6 py-4">
-                  PHONE NUMBER
-                </th>
-
-                <th
-                  className="px-6 py-4 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("total_orders")}
-                >
-                  TOTAL ORDERS {getSortLabel("total_orders")}
-                </th>
-
-                <th
-                  className="px-6 py-4 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("total_weight")}
-                >
-                  TOTAL WEIGHT {getSortLabel("total_weight")}
-                </th>
-
-                <th
-                  className="px-6 py-4 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("total_spent")}
-                >
-                  TOTAL SPENT {getSortLabel("total_spent")}
-                </th>
+                {[
+                  ["customer", "CUSTOMER NAME"],
+                  [null, "PHONE NUMBER"],
+                  ["total_orders", "TOTAL ORDERS"],
+                  ["total_weight", "TOTAL WEIGHT"],
+                  ["total_spent", "TOTAL SPENT"],
+                ].map(([key, label]) => (
+                  <th
+                    key={label}
+                    className={`px-6 py-4 ${
+                      key ? "cursor-pointer hover:bg-gray-100" : ""
+                    }`}
+                    onClick={
+                      key ? () => handleSort(key) : undefined
+                    }
+                  >
+                    {label} {key && getSortLabel(key)}
+                  </th>
+                ))}
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-[#00000026]">
+            <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="text-center py-8 text-gray-500">
+                  <td colSpan={5} className="py-8 text-center">
                     Loading...
                   </td>
                 </tr>
-              ) : customers.length === 0 ? (
+              ) : currentData.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="text-center py-8 text-gray-500">
+                  <td colSpan={5} className="py-8 text-center">
                     No data available.
                   </td>
                 </tr>
               ) : (
-                currentData.map((c, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50">
+                currentData.map((c, index) => (
+                  <tr
+                    key={c.customer_id ?? index}
+                    className="hover:bg-gray-50"
+                  >
                     <td className="px-6 py-5 font-bold text-gray-900">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
-                          {c.customer.substring(0, 2).toUpperCase()}
-                        </div>
+                        <span className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs shrink-0">
+                          {String(c.customer || "?")
+                            .slice(0, 2)
+                            .toUpperCase()}
+                        </span>
                         {c.customer}
                       </div>
                     </td>
 
-                    <td className="px-6 py-5 font-medium text-gray-900 whitespace-nowrap">
+                    <td className="px-6 py-5">
                       {c.phone}
                     </td>
 
-                    <td className="px-6 py-5 font-medium text-gray-900">
+                    <td className="px-6 py-5">
                       {c.total_orders}
                     </td>
 
-                    <td className="px-6 py-5 font-medium text-gray-900 whitespace-nowrap">
+                    <td className="px-6 py-5">
                       {c.total_weight} kg
                     </td>
 
-                    <td className="px-6 py-5 font-bold text-[#4B5EAA] whitespace-nowrap">
-                      ₹{c.total_spent.toLocaleString()}
+                    <td className="px-6 py-5 font-bold text-[#4B5EAA]">
+                      ₹{money(c.total_spent)}
                     </td>
                   </tr>
                 ))
@@ -343,74 +436,59 @@ export default function CustomerPurchaseReport({ period = "Daily" }) {
           </table>
         </div>
 
-        {/* Mobile Customer Cards */}
+        {/* Mobile cards */}
         <div className="md:hidden p-3 sm:p-4 space-y-3">
           {loading ? (
-            <div className="text-center py-8 text-gray-500">
+            <p className="text-center py-8 text-gray-500">
               Loading...
-            </div>
-          ) : customers.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            </p>
+          ) : currentData.length === 0 ? (
+            <p className="text-center py-8 text-gray-500">
               No data available.
-            </div>
+            </p>
           ) : (
-            currentData.map((c, idx) => (
+            currentData.map((c, index) => (
               <div
-                key={idx}
-                className="border border-gray-200 rounded-xl p-4 space-y-4 hover:bg-gray-50 transition"
+                key={c.customer_id ?? index}
+                className="border border-gray-200 rounded-xl p-4 space-y-4"
               >
-                {/* Customer Details */}
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0">
-                    {c.customer.substring(0, 2).toUpperCase()}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs text-gray-400 font-semibold uppercase">
-                      Customer Name
-                    </p>
-                    <h3 className="font-bold text-gray-900 text-base break-words mt-1">
-                      {c.customer}
-                    </h3>
-                  </div>
-                </div>
-
-                {/* Phone */}
-                <div className="border-t border-gray-100 pt-3">
-                  <p className="text-xs text-gray-400 font-semibold uppercase">
-                    Phone Number
+                <div>
+                  <p className="text-xs text-gray-400 uppercase">
+                    Customer
                   </p>
-                  <p className="text-sm font-medium text-gray-900 mt-1">
+                  <h3 className="font-bold text-gray-900 break-words">
+                    {c.customer}
+                  </h3>
+                  <p className="text-sm text-gray-500">
                     {c.phone}
                   </p>
                 </div>
 
-                {/* Purchase Details */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-500 mb-1">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500">
                       Total Orders
                     </p>
-                    <p className="text-sm font-bold text-gray-900">
+                    <p className="font-bold">
                       {c.total_orders}
                     </p>
                   </div>
 
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-500 mb-1">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500">
                       Total Weight
                     </p>
-                    <p className="text-sm font-bold text-gray-900">
+                    <p className="font-bold">
                       {c.total_weight} kg
                     </p>
                   </div>
 
-                  <div className="bg-blue-50 rounded-lg p-3 col-span-2">
-                    <p className="text-xs text-gray-500 mb-1">
+                  <div className="col-span-2 bg-blue-50 rounded-lg p-3">
+                    <p className="text-xs text-gray-500">
                       Total Spent
                     </p>
-                    <p className="text-base font-bold text-[#4B5EAA] break-words">
-                      ₹{c.total_spent.toLocaleString()}
+                    <p className="font-bold text-[#4B5EAA]">
+                      ₹{money(c.total_spent)}
                     </p>
                   </div>
                 </div>
@@ -419,11 +497,10 @@ export default function CustomerPurchaseReport({ period = "Daily" }) {
           )}
         </div>
 
-        {/* Pagination */}
-        {!loading && customers.length > 0 && (
-          <div className="border-t border-[#00000026]">
+        {!loading && sortedData.length > 0 && (
+          <div className="border-t">
             <Pagination
-              currentPage={currentPage}
+              currentPage={safePage}
               totalPages={totalPages}
               onPageChange={setCurrentPage}
             />
@@ -431,15 +508,15 @@ export default function CustomerPurchaseReport({ period = "Daily" }) {
         )}
       </div>
 
-      {/* Top Customers Chart */}
+      {/* Top Customers Chart — unchanged business meaning */}
       <div className="bg-white border border-[#00000026] rounded-xl p-4 sm:p-6 shadow-sm">
-        <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-5 sm:mb-6">
+        <h2 className="text-lg font-bold text-gray-900 mb-5">
           Top Customers by Revenue
         </h2>
 
         <div className="h-64 sm:h-72 w-full min-w-0">
           {loading ? (
-            <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+            <div className="h-full flex items-center justify-center text-gray-500">
               Loading chart...
             </div>
           ) : (
@@ -457,29 +534,25 @@ export default function CustomerPurchaseReport({ period = "Daily" }) {
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#f0f0f0"
                 />
 
                 <XAxis
                   dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "#9CA3AF", fontSize: 10 }}
-                  dy={10}
+                  tick={{ fontSize: 10 }}
                   interval={0}
                 />
 
                 <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "#9CA3AF", fontSize: 10 }}
+                  tick={{ fontSize: 10 }}
                   tickFormatter={(value) =>
                     `₹${(value / 1000).toFixed(1)}k`
                   }
                   width={55}
                 />
 
-                <Tooltip cursor={{ fill: "transparent" }} />
+                <Tooltip
+                  cursor={{ fill: "transparent" }}
+                />
 
                 <Bar
                   dataKey="uv"

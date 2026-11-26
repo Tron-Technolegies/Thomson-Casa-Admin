@@ -1,9 +1,14 @@
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
-import Pagination from "../common/Pagination";
 
-const tabs = ["All", "Pending", "Cutting", "Ready", "Delivered", "Cancelled"];
+import Pagination from "../common/Pagination";
+import SortDropdown from "../common/SortDropdown";
+
+import {
+  sortRecords,
+  getAvailableSortFields,
+} from "../../utils/sortUtils";
 
 const getStatusStyle = (status) => {
   switch (status) {
@@ -33,39 +38,85 @@ export default function OrderTable({
   onDelete,
 }) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState("newest");
+
   const itemsPerPage = 10;
 
-  const totalPages = Math.ceil(orders.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
+  const sortingConfig = {
+    nameKeys: ["customer"],
+    dateKeys: [
+      "created_at",
+      "order_date",
+      "delivery_date",
+    ],
+    amountKeys: [],
+    idKeys: ["id"],
+  };
 
-  const currentOrders = orders.slice(
+  const availableSort = getAvailableSortFields(
+    orders,
+    sortingConfig
+  );
+
+  const sortedOrders = sortRecords(
+    orders,
+    sortBy,
+    sortingConfig
+  );
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sortedOrders.length / itemsPerPage)
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const startIndex =
+    (currentPage - 1) * itemsPerPage;
+
+  const currentOrders = sortedOrders.slice(
     startIndex,
     startIndex + itemsPerPage
   );
 
-  const getDisplayItems = (order) => {
-    return order.items && order.items.length > 0
+  const getDisplayItems = (order) =>
+    order.items && order.items.length > 0
       ? order.items
-      : [{ chicken_type: order.chicken_type, weight: order.weight }];
-  };
+      : [
+          {
+            chicken_type: order.chicken_type,
+            weight: order.weight,
+          },
+        ];
 
-  const getChickenTypes = (items) => {
-    const types = [
-      ...new Set(items.map((i) => i.chicken_type)),
+  const getChickenTypes = (items) =>
+    [
+      ...new Set(
+        items
+          .map((item) => item.chicken_type)
+          .filter(Boolean)
+      ),
     ].join(" + ");
 
-    return items.length > 1 ? types : types;
-  };
-
-  const getTotalWeight = (items) => {
-    return items.reduce(
-      (sum, item) => sum + Number(item.weight || 0),
+  const getTotalWeight = (items) =>
+    items.reduce(
+      (sum, item) =>
+        sum + Number(item.weight || 0),
       0
     );
-  };
 
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString();
+  const formatDate = (value) => {
+    if (!value) return "—";
+
+    const date = new Date(value);
+
+    return Number.isNaN(date.getTime())
+      ? String(value)
+      : date.toLocaleDateString("en-IN");
   };
 
   return (
@@ -73,21 +124,68 @@ export default function OrderTable({
 
       <div className="bg-white border border-[#00000026] rounded-xl overflow-hidden">
 
-        {/* Desktop and Tablet Table */}
+        {/* SORTING HEADER */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-5 border-b border-gray-200">
+
+          <div>
+            <h2 className="font-semibold text-lg text-gray-900">
+              Order Records
+            </h2>
+
+            <p className="text-sm text-gray-500 mt-1">
+              Showing {sortedOrders.length} orders
+            </p>
+          </div>
+
+          <SortDropdown
+            value={sortBy}
+            onChange={(value) => {
+              setSortBy(value);
+              setCurrentPage(1);
+            }}
+            allowDate={availableSort.allowDate}
+            allowAmount={false}
+          />
+        </div>
+
+        {/* DESKTOP AND TABLET TABLE */}
         <div className="hidden md:block w-full overflow-x-auto">
 
           <table className="w-full min-w-[950px] text-left text-sm text-gray-600">
 
             <thead className="bg-[#F8F9FB] text-xs uppercase text-gray-400 font-bold border-b border-[#00000026]">
               <tr>
-                <th className="px-5 py-4">ORDER NO</th>
-                <th className="px-5 py-4">CUSTOMER</th>
-                <th className="px-5 py-4">DATE</th>
-                <th className="px-5 py-4">DELIVERY</th>
-                <th className="px-5 py-4">CHICKEN TYPE</th>
-                <th className="px-5 py-4">WEIGHT</th>
-                <th className="px-5 py-4 text-center">STATUS</th>
-                <th className="px-5 py-4 text-center">ACTION</th>
+                <th className="px-5 py-4">
+                  ORDER NO
+                </th>
+
+                <th className="px-5 py-4">
+                  CUSTOMER
+                </th>
+
+                <th className="px-5 py-4">
+                  DATE
+                </th>
+
+                <th className="px-5 py-4">
+                  DELIVERY
+                </th>
+
+                <th className="px-5 py-4">
+                  CHICKEN TYPE
+                </th>
+
+                <th className="px-5 py-4">
+                  WEIGHT
+                </th>
+
+                <th className="px-5 py-4 text-center">
+                  STATUS
+                </th>
+
+                <th className="px-5 py-4 text-center">
+                  ACTION
+                </th>
               </tr>
             </thead>
 
@@ -96,16 +194,16 @@ export default function OrderTable({
               {loading ? (
                 <tr>
                   <td
-                    colSpan="8"
+                    colSpan={8}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     Loading orders...
                   </td>
                 </tr>
-              ) : orders.length === 0 ? (
+              ) : sortedOrders.length === 0 ? (
                 <tr>
                   <td
-                    colSpan="8"
+                    colSpan={8}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     No orders found.
@@ -113,15 +211,19 @@ export default function OrderTable({
                 </tr>
               ) : (
                 currentOrders.map((order) => {
-                  const displayItems = getDisplayItems(order);
-                  const types = getChickenTypes(displayItems);
-                  const totalWeight = getTotalWeight(displayItems);
+                  const items = getDisplayItems(order);
+
+                  const types =
+                    getChickenTypes(items);
+
+                  const totalWeight =
+                    getTotalWeight(items);
 
                   return (
                     <tr
                       key={order.id}
+                      onClick={() => onEdit?.(order)}
                       className="hover:bg-gray-50 cursor-pointer transition"
-                      onClick={() => onEdit && onEdit(order)}
                     >
 
                       <td className="px-5 py-4 font-medium text-gray-900 whitespace-nowrap">
@@ -150,7 +252,7 @@ export default function OrderTable({
 
                       <td className="px-5 py-4 text-center">
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${getStatusStyle(
+                          className={`inline-flex px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${getStatusStyle(
                             order.status
                           )}`}
                         >
@@ -160,98 +262,101 @@ export default function OrderTable({
 
                       <td
                         className="px-5 py-4 text-center"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) =>
+                          e.stopPropagation()
+                        }
                       >
                         <div className="flex items-center justify-center gap-3">
 
                           <button
-                            onClick={() => onEdit && onEdit(order)}
-                            className="text-gray-600 hover:text-[#4B5EAA] transition"
+                            type="button"
                             title="Edit order"
+                            onClick={() =>
+                              onEdit?.(order)
+                            }
+                            className="text-gray-600 hover:text-[#4B5EAA] transition"
                           >
                             <FiEdit2 size={18} />
                           </button>
 
                           <button
-                            onClick={() => onDelete && onDelete(order)}
-                            className="text-gray-600 hover:text-red-500 transition"
+                            type="button"
                             title="Delete order"
+                            onClick={() =>
+                              onDelete?.(order)
+                            }
+                            className="text-gray-600 hover:text-red-500 transition"
                           >
                             <FiTrash2 size={18} />
                           </button>
-
                         </div>
                       </td>
-
                     </tr>
                   );
                 })
               )}
-
             </tbody>
           </table>
         </div>
 
-        {/* Mobile Order Cards */}
+        {/* MOBILE ORDER CARDS */}
         <div className="md:hidden p-3 space-y-3">
 
           {loading ? (
             <div className="py-10 text-center text-gray-500">
               Loading orders...
             </div>
-          ) : orders.length === 0 ? (
+          ) : sortedOrders.length === 0 ? (
             <div className="py-10 text-center text-gray-500">
               No orders found.
             </div>
           ) : (
             currentOrders.map((order) => {
-              const displayItems = getDisplayItems(order);
-              const types = getChickenTypes(displayItems);
-              const totalWeight = getTotalWeight(displayItems);
+              const items = getDisplayItems(order);
+              const types = getChickenTypes(items);
+              const totalWeight = getTotalWeight(items);
 
               return (
                 <div
                   key={order.id}
-                  onClick={() => onEdit && onEdit(order)}
-                  className="border border-gray-200 rounded-xl p-4 bg-white shadow-sm cursor-pointer active:bg-gray-50 transition"
+                  onClick={() => onEdit?.(order)}
+                  className="w-full min-w-0 border border-gray-200 rounded-xl bg-white p-4 shadow-sm cursor-pointer"
                 >
 
-                  {/* Order Number and Status */}
-                  <div className="flex items-start justify-between gap-3">
+                  {/* HEADER */}
+                  <div className="flex flex-wrap items-start justify-between gap-3 pb-3 mb-4 border-b border-gray-100">
 
                     <div className="min-w-0">
                       <p className="text-xs text-gray-400 mb-1">
-                        Order Number
+                        Order No
                       </p>
 
-                      <h3 className="font-bold text-gray-900 text-sm break-words">
+                      <p className="font-bold text-[#4B5EAA] break-words">
                         {order.order_number}
-                      </h3>
+                      </p>
                     </div>
 
                     <span
-                      className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold ${getStatusStyle(
+                      className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusStyle(
                         order.status
                       )}`}
                     >
                       {order.status}
                     </span>
-
                   </div>
 
-                  {/* Customer */}
-                  <div className="mt-4">
-                    <p className="text-xs text-gray-400 mb-1">
-                      Customer
-                    </p>
+                  {/* ORDER DETAILS */}
+                  <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-4">
 
-                    <p className="text-sm font-semibold text-gray-800 break-words">
-                      {order.customer}
-                    </p>
-                  </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-400 mb-1">
+                        Customer
+                      </p>
 
-                  {/* Order Details */}
-                  <div className="grid grid-cols-2 gap-4 mt-4">
+                      <p className="text-sm font-semibold text-gray-900 break-words">
+                        {order.customer}
+                      </p>
+                    </div>
 
                     <div>
                       <p className="text-xs text-gray-400 mb-1">
@@ -292,49 +397,52 @@ export default function OrderTable({
                         {totalWeight} Kg
                       </p>
                     </div>
-
                   </div>
 
-                  {/* Actions */}
+                  {/* ACTIONS */}
                   <div
                     className="flex items-center justify-end gap-3 mt-4 pt-3 border-t border-gray-100"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) =>
+                      e.stopPropagation()
+                    }
                   >
 
                     <button
-                      onClick={() => onEdit && onEdit(order)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-[#4B5EAA] text-xs font-semibold hover:bg-blue-100 transition"
+                      type="button"
+                      onClick={() =>
+                        onEdit?.(order)
+                      }
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-[#4B5EAA] text-xs font-semibold hover:bg-blue-100"
                     >
                       <FiEdit2 size={15} />
                       Edit
                     </button>
 
                     <button
-                      onClick={() => onDelete && onDelete(order)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition"
+                      type="button"
+                      onClick={() =>
+                        onDelete?.(order)
+                      }
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100"
                     >
                       <FiTrash2 size={15} />
                       Delete
                     </button>
-
                   </div>
-
                 </div>
               );
             })
           )}
-
         </div>
 
-        {/* Pagination */}
-        {!loading && orders.length > 0 && (
+        {/* PAGINATION */}
+        {!loading && sortedOrders.length > 0 && (
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
           />
         )}
-
       </div>
     </div>
   );

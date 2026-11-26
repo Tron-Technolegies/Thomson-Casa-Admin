@@ -1,10 +1,17 @@
 
 import React, { useState } from "react";
 import { FiDownload } from "react-icons/fi";
-import { exportTableToPDF } from "../../utils/pdfGenerator";
 import { FaMoneyBillWave, FaUniversity } from "react-icons/fa";
 import { BiMoney } from "react-icons/bi";
+
+import { exportTableToPDF } from "../../utils/pdfGenerator";
 import Pagination from "../common/Pagination";
+import SortDropdown from "../common/SortDropdown";
+
+import {
+  sortRecords,
+  getAvailableSortFields,
+} from "../../utils/sortUtils";
 
 const getMethodIcon = (method) => {
   switch (method) {
@@ -26,22 +33,57 @@ const getMethodIcon = (method) => {
   }
 };
 
+const formatAmount = (value) =>
+  Number(value || 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
 export default function AdvanceTable({
   advances = [],
-  loading,
+  loading = false,
   onRecordAdvance,
 }) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState("newest");
+
   const itemsPerPage = 10;
 
-  const totalPages = Math.ceil(advances.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
+  // Field mapping based on existing Admin advance API
+  const sortingConfig = {
+    nameKeys: ["customer"],
+    dateKeys: ["created_at", "date"],
+    amountKeys: ["amount"],
+    idKeys: ["id"],
+  };
 
-  const currentAdvances = advances.slice(
+  const availableSort = getAvailableSortFields(
+    advances,
+    sortingConfig
+  );
+
+  // Sorting happens before pagination
+  const sortedAdvances = sortRecords(
+    advances,
+    sortBy,
+    sortingConfig
+  );
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sortedAdvances.length / itemsPerPage)
+  );
+
+  const safePage = Math.min(currentPage, totalPages);
+
+  const startIndex = (safePage - 1) * itemsPerPage;
+
+  const currentAdvances = sortedAdvances.slice(
     startIndex,
     startIndex + itemsPerPage
   );
 
+  // PDF uses exactly the same sorted dataset
   const handleDownloadPDF = () => {
     const headers = [
       "ID",
@@ -53,14 +95,14 @@ export default function AdvanceTable({
       "NOTE",
     ];
 
-    const data = advances.map((row) => [
+    const data = sortedAdvances.map((row) => [
       row.id,
       row.customer,
-      `Rs. ${row.amount}`,
+      `Rs. ${formatAmount(row.amount)}`,
       row.payment_method,
-      row.reference_no,
-      row.date,
-      row.note,
+      row.reference_no || "",
+      row.date || "",
+      row.note || "",
     ]);
 
     exportTableToPDF(
@@ -75,68 +117,89 @@ export default function AdvanceTable({
     <div className="mt-4 sm:mt-6 bg-white border border-[#00000026] rounded-xl overflow-hidden">
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 sm:p-6 border-b border-[#00000026] gap-4">
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center p-4 sm:p-6 border-b border-[#00000026] gap-4">
 
-        <h2 className="text-lg sm:text-xl font-bold text-[#4B5EAA]">
-          Records
-        </h2>
+        <div className="min-w-0">
+          <h2 className="text-lg sm:text-xl font-bold text-[#4B5EAA]">
+            Records
+          </h2>
 
-        <div className="flex flex-col xs:flex-row sm:flex-row w-full sm:w-auto gap-2 sm:gap-4">
+          <p className="text-xs text-gray-500 mt-1">
+            Showing {sortedAdvances.length} advance records
+          </p>
+        </div>
 
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center w-full lg:w-auto gap-3">
+
+          {/* Sorting */}
+          <SortDropdown
+            value={sortBy}
+            onChange={(value) => {
+              setSortBy(value);
+              setCurrentPage(1);
+            }}
+            allowDate={availableSort.allowDate}
+            allowAmount={availableSort.allowAmount}
+          />
+
+          {/* Record Advance */}
           <button
             type="button"
             onClick={onRecordAdvance}
-            className="flex items-center justify-center gap-2 bg-[#4B5EAA] cursor-pointer text-white px-4 py-2.5 rounded-lg font-semibold text-sm sm:text-base hover:bg-[#3d4f92] transition w-full sm:w-auto"
+            className="flex items-center justify-center gap-2 bg-[#4B5EAA] cursor-pointer text-white px-4 py-2.5 rounded-lg font-semibold text-sm hover:bg-[#3d4f92] transition w-full sm:w-auto"
           >
             <BiMoney size={20} />
             Record Advance
           </button>
 
+          {/* Download sorted PDF */}
           <button
             type="button"
             onClick={handleDownloadPDF}
-            className="flex items-center justify-center gap-2 cursor-pointer bg-red-100 text-red-500 px-4 py-2.5 rounded-lg font-semibold text-sm sm:text-base hover:bg-red-200 transition w-full sm:w-auto"
+            disabled={loading || sortedAdvances.length === 0}
+            className="flex items-center justify-center gap-2 cursor-pointer bg-red-100 text-red-500 px-4 py-2.5 rounded-lg font-semibold text-sm hover:bg-red-200 transition w-full sm:w-auto disabled:opacity-50"
           >
             <FiDownload />
             PDF
           </button>
-
         </div>
       </div>
 
-      {/* Desktop / Tablet Table */}
+      {/* Desktop / Tablet */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full min-w-[950px] text-left text-sm text-gray-600">
-
           <thead className="bg-[#F8F9FB] text-xs uppercase text-gray-400 font-bold border-b border-[#00000026]">
             <tr>
               <th className="px-6 py-4">ID</th>
               <th className="px-6 py-4">CUSTOMER</th>
-              <th className="px-6 py-4 text-right">AMOUNT (₹)</th>
-              <th className="px-6 py-4">PAYMENT METHOD</th>
-              <th className="px-6 py-4">REFERENCE</th>
-              <th className="px-6 py-4">DATE</th>
-              <th className="px-6 py-4">NOTE</th>
+              <th className="px-6 py-4 text-right">
+                AMOUNT (₹)
+              </th>
+              <th className="px-6 py-4">
+                PAYMENT METHOD
+              </th>
+              <th className="px-6 py-4">
+                REFERENCE
+              </th>
+              <th className="px-6 py-4">
+                DATE
+              </th>
+              <th className="px-6 py-4">
+                NOTE
+              </th>
             </tr>
           </thead>
 
           <tbody className="divide-y divide-[#00000026]">
-
             {loading ? (
               <tr>
-                <td
-                  colSpan="7"
-                  className="px-6 py-8 text-center text-gray-500"
-                >
+                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                   Loading advances...
                 </td>
               </tr>
-            ) : advances.length === 0 ? (
+            ) : sortedAdvances.length === 0 ? (
               <tr>
-                <td
-                  colSpan="7"
-                  className="px-6 py-8 text-center text-gray-500"
-                >
+                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                   No advances recorded yet.
                 </td>
               </tr>
@@ -155,7 +218,7 @@ export default function AdvanceTable({
                   </td>
 
                   <td className="px-6 py-4 font-bold text-gray-900 text-right whitespace-nowrap">
-                    ₹ {row.amount}
+                    ₹ {formatAmount(row.amount)}
                   </td>
 
                   <td className="px-6 py-4">
@@ -166,32 +229,30 @@ export default function AdvanceTable({
                   </td>
 
                   <td className="px-6 py-4">
-                    {row.reference_no}
+                    {row.reference_no || "—"}
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {row.date}
+                    {row.date || "—"}
                   </td>
 
                   <td className="px-6 py-4">
-                    {row.note}
+                    {row.note || "—"}
                   </td>
                 </tr>
               ))
             )}
-
           </tbody>
         </table>
       </div>
 
       {/* Mobile Cards */}
       <div className="md:hidden divide-y divide-[#00000026]">
-
         {loading ? (
           <div className="px-4 py-10 text-center text-sm text-gray-500">
             Loading advances...
           </div>
-        ) : advances.length === 0 ? (
+        ) : sortedAdvances.length === 0 ? (
           <div className="px-4 py-10 text-center text-sm text-gray-500">
             No advances recorded yet.
           </div>
@@ -201,10 +262,8 @@ export default function AdvanceTable({
               key={row.id ?? idx}
               className="p-4 space-y-4"
             >
-
               {/* ID and Amount */}
               <div className="flex items-start justify-between gap-3">
-
                 <div className="min-w-0">
                   <p className="text-xs text-gray-400 font-medium">
                     ADVANCE ID
@@ -221,10 +280,9 @@ export default function AdvanceTable({
                   </p>
 
                   <p className="text-base font-bold text-gray-900">
-                    ₹ {row.amount}
+                    ₹ {formatAmount(row.amount)}
                   </p>
                 </div>
-
               </div>
 
               {/* Customer */}
@@ -240,7 +298,6 @@ export default function AdvanceTable({
 
               {/* Payment Method and Date */}
               <div className="grid grid-cols-2 gap-3">
-
                 <div className="min-w-0">
                   <p className="text-xs text-gray-400 mb-2">
                     Payment Method
@@ -248,22 +305,22 @@ export default function AdvanceTable({
 
                   <div className="inline-flex items-center bg-gray-100 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-gray-700 max-w-full">
                     {getMethodIcon(row.payment_method)}
+
                     <span className="break-words">
                       {row.payment_method}
                     </span>
                   </div>
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-gray-400 mb-1">
                     Date
                   </p>
 
                   <p className="text-sm font-medium text-gray-800 break-words">
-                    {row.date}
+                    {row.date || "—"}
                   </p>
                 </div>
-
               </div>
 
               {/* Reference */}
@@ -273,7 +330,7 @@ export default function AdvanceTable({
                 </p>
 
                 <p className="text-sm text-gray-700 break-all">
-                  {row.reference_no || "-"}
+                  {row.reference_no || "—"}
                 </p>
               </div>
 
@@ -284,27 +341,24 @@ export default function AdvanceTable({
                 </p>
 
                 <p className="text-sm text-gray-700 break-words">
-                  {row.note || "-"}
+                  {row.note || "—"}
                 </p>
               </div>
-
             </div>
           ))
         )}
-
       </div>
 
       {/* Pagination */}
-      {!loading && advances.length > 0 && (
+      {!loading && sortedAdvances.length > 0 && (
         <div className="border-t border-[#00000026]">
           <Pagination
-            currentPage={currentPage}
+            currentPage={safePage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
           />
         </div>
       )}
-
     </div>
   );
 }

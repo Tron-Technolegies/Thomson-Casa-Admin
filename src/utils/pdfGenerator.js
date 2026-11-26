@@ -4,7 +4,6 @@ import autoTable from "jspdf-autotable";
 
 /**
  * Export a table to PDF.
- *
  * Used by Sales Reports and other report pages.
  */
 export const exportTableToPDF = (
@@ -25,6 +24,7 @@ export const exportTableToPDF = (
   doc.setTextColor(100, 100, 100);
 
   const now = new Date();
+
   const dateStr =
     now.toLocaleDateString("en-IN") +
     " " +
@@ -32,45 +32,53 @@ export const exportTableToPDF = (
 
   doc.text(`Generated on: ${dateStr}`, 14, 28);
 
-  // Check whether this is the Sales Report format.
-  // This prevents payment highlighting in unrelated reports.
+  // Check Sales Report format
   const isSalesReport =
     headers.length === 7 &&
     String(headers[0]).includes("Customer") &&
     String(headers[5]).includes("Paid") &&
     String(headers[6]).includes("Balance");
 
-  // Convert formatted numbers such as "12,000.00" to numbers.
+  // Convert formatted values into numbers
   const parseAmount = (value) => {
-    const cleaned = String(value ?? "")
-      .replace(/[₹,\s]/g, "");
+    const cleaned = String(value ?? "").replace(
+      /[₹,\s]/g,
+      ""
+    );
 
     if (!cleaned) return NaN;
 
     const parsed = Number(cleaned);
+
     return Number.isFinite(parsed) ? parsed : NaN;
   };
 
-  // Determine payment status from paid and balance amounts.
+  // Payment status
   const getPaymentStatus = (paid, balance) => {
-    if (!Number.isFinite(paid) || !Number.isFinite(balance)) {
+    if (
+      !Number.isFinite(paid) ||
+      !Number.isFinite(balance)
+    ) {
       return null;
     }
 
     if (balance <= 0) return "paid";
     if (paid <= 0) return "unpaid";
+
     return "partial";
   };
 
-  // Each customer may have several meat category rows.
-  // Remember the customer's status until the next customer.
   let currentCustomerStatus = null;
 
+  // Identify payment status for each customer row
   const rowStatuses = data.map((row) => {
-    if (!isSalesReport || !Array.isArray(row)) return null;
+    if (!isSalesReport || !Array.isArray(row)) {
+      return null;
+    }
 
     const firstCell = String(row[0] ?? "").trim();
 
+    // Total rows
     if (
       firstCell === "SECTION TOTAL" ||
       firstCell === "GRAND TOTAL"
@@ -79,7 +87,7 @@ export const exportTableToPDF = (
       return null;
     }
 
-    // Live Rate / Meat Rate section heading
+    // Pricing section headings
     if (
       firstCell === "Live Rate Purchases" ||
       firstCell === "Meat Rate Purchases" ||
@@ -89,14 +97,23 @@ export const exportTableToPDF = (
       return null;
     }
 
-    // Blank separator row
-    if (row.every((cell) => String(cell ?? "").trim() === "")) {
+    // Empty separator
+    if (
+      row.every(
+        (cell) => String(cell ?? "").trim() === ""
+      )
+    ) {
       currentCustomerStatus = null;
       return null;
     }
 
-    // Customer rows have the customer code and name in
-    // the first column, and payment details in columns 5 and 6.
+    // Shop Total is not an invoice item row
+    if (firstCell.startsWith("Shop Total (")) {
+      currentCustomerStatus = null;
+      return null;
+    }
+
+    // First customer item contains payment amounts
     if (firstCell) {
       currentCustomerStatus = getPaymentStatus(
         parseAmount(row[5]),
@@ -107,7 +124,6 @@ export const exportTableToPDF = (
     return currentCustomerStatus;
   });
 
-  // Create PDF table
   autoTable(doc, {
     head: [headers],
     body: data,
@@ -127,35 +143,67 @@ export const exportTableToPDF = (
       fontStyle: "bold",
     },
 
-    // Right-align numeric columns in the Sales Report.
     ...(isSalesReport
       ? {
           columnStyles: {
-            0: { cellWidth: 42 },
-            1: { cellWidth: 27 },
-            2: { cellWidth: 23, halign: "right" },
-            3: { cellWidth: 23, halign: "right" },
-            4: { cellWidth: 26, halign: "right" },
-            5: { cellWidth: 26, halign: "right" },
-            6: { cellWidth: 26, halign: "right" },
+            0: { cellWidth: 40 },
+            1: { cellWidth: 26 },
+            2: {
+              cellWidth: 22,
+              halign: "right",
+            },
+            3: {
+              cellWidth: 22,
+              halign: "right",
+            },
+            4: {
+              cellWidth: 26,
+              halign: "right",
+            },
+            5: {
+              cellWidth: 26,
+              halign: "right",
+            },
+            6: {
+              cellWidth: 26,
+              halign: "right",
+            },
           },
         }
       : {}),
 
     didParseCell: (cellData) => {
-      if (!isSalesReport || cellData.section !== "body") {
+      if (
+        !isSalesReport ||
+        cellData.section !== "body"
+      ) {
         return;
       }
 
       const row = cellData.row.raw;
-      const firstCell = String(row?.[0] ?? "").trim();
+
+      const firstCell = String(
+        row?.[0] ?? ""
+      ).trim();
 
       const styles = cellData.cell.styles;
 
-      // Section headings
+      // Customer Shop Total - Light Blue
+      if (firstCell.startsWith("Shop Total (")) {
+        styles.fillColor = [220, 234, 255];
+        styles.textColor = [25, 55, 110];
+        styles.fontStyle = "bold";
+        styles.lineWidth = 0.25;
+        styles.lineColor = [160, 185, 220];
+        return;
+      }
+
+      // Live Rate / Meat Rate heading
       if (
         firstCell === "Live Rate Purchases" ||
-        firstCell === "Meat Rate Purchases"
+        firstCell === "Meat Rate Purchases" ||
+        firstCell ===
+          "Legacy / Unclassified Purchases"
       ) {
         styles.fillColor = [235, 239, 250];
         styles.textColor = [45, 65, 125];
@@ -163,7 +211,7 @@ export const exportTableToPDF = (
         return;
       }
 
-      // SECTION TOTAL - Light blue
+      // Section Total - Light Blue
       if (firstCell === "SECTION TOTAL") {
         styles.fillColor = [213, 230, 255];
         styles.textColor = [25, 55, 110];
@@ -173,7 +221,7 @@ export const exportTableToPDF = (
         return;
       }
 
-      // GRAND TOTAL - Dark blue
+      // Grand Total - Dark Blue
       if (firstCell === "GRAND TOTAL") {
         styles.fillColor = [65, 85, 155];
         styles.textColor = [255, 255, 255];
@@ -183,41 +231,42 @@ export const exportTableToPDF = (
         return;
       }
 
-      // Highlight all item rows belonging to the same customer.
-      const paymentStatus = rowStatuses[cellData.row.index];
+      const paymentStatus =
+        rowStatuses[cellData.row.index];
 
-
-      // Customer payment status highlighting
-
+      // Unpaid - Light Red
       if (paymentStatus === "unpaid") {
-        // UNPAID - Light Red
         styles.fillColor = [255, 220, 220];
         styles.textColor = [160, 30, 30];
+      }
 
-      } else if (paymentStatus === "partial") {
-        // PARTIALLY PAID - Light Yellow
+      // Partial - Light Yellow
+      else if (paymentStatus === "partial") {
         styles.fillColor = [255, 245, 190];
         styles.textColor = [120, 85, 0];
+      }
 
-      } else if (paymentStatus === "paid") {
-        // FULLY PAID - Normal White
+      // Paid - White
+      else if (paymentStatus === "paid") {
         styles.fillColor = [255, 255, 255];
         styles.textColor = [40, 40, 40];
       }
-
     },
 
-    // Page numbers
-    didDrawPage: (hookData) => {
-      const pageCount = doc.getNumberOfPages();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
+    didDrawPage: () => {
+      const pageNumber = doc.getNumberOfPages();
+
+      const pageWidth =
+        doc.internal.pageSize.getWidth();
+
+      const pageHeight =
+        doc.internal.pageSize.getHeight();
 
       doc.setFontSize(9);
       doc.setTextColor(130, 130, 130);
 
       doc.text(
-        `Page ${pageCount}`,
+        `Page ${pageNumber}`,
         pageWidth - 14,
         pageHeight - 10,
         { align: "right" }
@@ -236,9 +285,8 @@ export const exportTableToPDF = (
 };
 
 /**
- * Export an individual invoice to PDF.
- *
- * Kept separate from the Sales Report highlighting.
+ * Export individual invoice to PDF.
+ * Separate from Sales Report highlighting.
  */
 export const exportInvoiceToPDF = (invoice) => {
   const doc = new jsPDF();
@@ -253,13 +301,18 @@ export const exportInvoiceToPDF = (invoice) => {
   doc.setTextColor(100, 100, 100);
 
   doc.text(
-    `Invoice Number: ${invoice.id || invoice.invoice_number}`,
+    `Invoice Number: ${
+      invoice.id || invoice.invoice_number
+    }`,
     14,
     32
   );
 
   doc.text(
-    `Date: ${invoice.date || new Date().toLocaleDateString()}`,
+    `Date: ${
+      invoice.date ||
+      new Date().toLocaleDateString()
+    }`,
     14,
     38
   );
@@ -285,32 +338,45 @@ export const exportInvoiceToPDF = (invoice) => {
   );
 
   // Invoice summary
-  const headers = ["Item / Description", "Amount"];
+  const headers = [
+    "Item / Description",
+    "Amount",
+  ];
 
   const data = [
     [
       "Subtotal (Net Amount)",
-      `Rs. ${parseFloat(invoice.amount || 0).toFixed(2)}`,
+      `Rs. ${parseFloat(
+        invoice.amount || 0
+      ).toFixed(2)}`,
     ],
     [
       "Tax (GST)",
       `Rs. ${parseFloat(
-        invoice.tax || invoice.gst_amount || 0
+        invoice.tax ||
+        invoice.gst_amount ||
+        0
       ).toFixed(2)}`,
     ],
     [
       "Total Amount",
       `Rs. ${parseFloat(
-        invoice.total || invoice.total_amount || 0
+        invoice.total ||
+        invoice.total_amount ||
+        0
       ).toFixed(2)}`,
     ],
     [
       "Advance Used",
-      `Rs. ${parseFloat(invoice.advance_used || 0).toFixed(2)}`,
+      `Rs. ${parseFloat(
+        invoice.advance_used || 0
+      ).toFixed(2)}`,
     ],
     [
       "Balance Due",
-      `Rs. ${parseFloat(invoice.balance || 0).toFixed(2)}`,
+      `Rs. ${parseFloat(
+        invoice.balance || 0
+      ).toFixed(2)}`,
     ],
   ];
 
@@ -342,26 +408,38 @@ export const exportInvoiceToPDF = (invoice) => {
     },
 
     didParseCell: (cellData) => {
-      if (cellData.section !== "body") return;
+      if (cellData.section !== "body") {
+        return;
+      }
 
       const firstCell = String(
         cellData.row.raw?.[0] || ""
       ).trim();
 
+      // Total Amount
       if (firstCell === "Total Amount") {
-        cellData.cell.styles.fillColor = [225, 235, 255];
+        cellData.cell.styles.fillColor = [
+          225, 235, 255,
+        ];
+
         cellData.cell.styles.fontStyle = "bold";
-        cellData.cell.styles.textColor = [35, 65, 150];
+
+        cellData.cell.styles.textColor = [
+          35, 65, 150,
+        ];
       }
 
+      // Balance Due
       if (firstCell === "Balance Due") {
-        cellData.cell.styles.fillColor = [240, 240, 245];
+        cellData.cell.styles.fillColor = [
+          240, 240, 245,
+        ];
+
         cellData.cell.styles.fontStyle = "bold";
       }
     },
   });
 
-  // Footer
   const footerY = Math.min(
     doc.lastAutoTable.finalY + 20,
     doc.internal.pageSize.getHeight() - 15
@@ -369,6 +447,7 @@ export const exportInvoiceToPDF = (invoice) => {
 
   doc.setFontSize(10);
   doc.setTextColor(150, 150, 150);
+
   doc.text(
     "Thank you for your business!",
     14,
@@ -376,6 +455,8 @@ export const exportInvoiceToPDF = (invoice) => {
   );
 
   doc.save(
-    `Invoice_${invoice.id || invoice.invoice_number}.pdf`
+    `Invoice_${
+      invoice.id || invoice.invoice_number
+    }.pdf`
   );
 };
