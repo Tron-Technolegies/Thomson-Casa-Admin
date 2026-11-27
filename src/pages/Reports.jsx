@@ -1,72 +1,126 @@
+
 import React, { useState } from "react";
-import { FiTrendingUp, FiFileText, FiShoppingCart } from "react-icons/fi";
-import { BiPurchaseTagAlt } from "react-icons/bi";
+
+import {
+  FiFileText,
+  FiShoppingCart,
+} from "react-icons/fi";
+
 import { MdOutlineAccountBalanceWallet } from "react-icons/md";
-import { VscCreditCard, VscGraph } from "react-icons/vsc";
+import { VscGraph } from "react-icons/vsc";
 import { TbInvoice } from "react-icons/tb";
 
 import SalesReports from "../components/reports/SalesReports";
-import CustomerPurchaseReport from "../components/reports/CustomerPurchaseReport";
+import BalanceAmountReport from "../components/reports/BalanceAmountReport";
 import AdvanceBalanceReport from "../components/reports/AdvanceBalanceReport";
 import InvoiceReport from "../components/reports/InvoiceReport";
 
 export default function Reports() {
-  const [activeTab, setActiveTab] = useState("Sales Report");
+  const [activeTab, setActiveTab] = useState(
+    "Sales Report"
+  );
+
   const [period, setPeriod] = useState("Daily");
 
   const tabs = [
-    { name: "Sales Report", icon: <FiFileText /> },
-    { name: "Customer Purchase", icon: <BiPurchaseTagAlt /> },
-    { name: "Advance Balance", icon: <VscGraph /> },
-    { name: "Invoice Report", icon: <TbInvoice /> },
+    {
+      name: "Sales Report",
+      icon: <FiFileText />,
+    },
+    {
+      name: "Balance Amount Details",
+      icon: <MdOutlineAccountBalanceWallet />,
+    },
+    {
+      name: "Advance Balance",
+      icon: <VscGraph />,
+    },
+    {
+      name: "Invoice Report",
+      icon: <TbInvoice />,
+    },
   ];
 
   return (
-    <div className="max-w-[1600px] mx-auto pb-10">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
+    <div className="mx-auto max-w-[1600px] pb-10">
 
-        {/* Period Segmented Control */}
-        <div className="flex bg-white border border-[#00000026] rounded-xl p-1">
-          {["Daily", "Weekly", "Monthly"].map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-semibold transition cursor-pointer whitespace-nowrap ${
-                period === p ? "bg-[#4B5EAA] text-white" : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              {p === "Daily" && <FiFileText size={14} />}
-              {p === "Weekly" && <span>₹</span>}
-              {p === "Monthly" && <FiShoppingCart size={14} />}
-              {p}
-            </button>
-          ))}
+      {/* Page heading */}
+      <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+          Reports
+        </h1>
+
+        {/* Existing period selector */}
+        <div className="flex max-w-full overflow-x-auto rounded-xl border border-[#00000026] bg-white p-1">
+          {["Daily", "Weekly", "Monthly"].map(
+            (option) => (
+              <button
+                type="button"
+                key={option}
+                onClick={() => setPeriod(option)}
+                className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition sm:px-6 ${
+                  period === option
+                    ? "bg-[#4B5EAA] text-white"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                {option === "Daily" && (
+                  <FiFileText size={14} />
+                )}
+
+                {option === "Weekly" && (
+                  <span>₹</span>
+                )}
+
+                {option === "Monthly" && (
+                  <FiShoppingCart size={14} />
+                )}
+
+                {option}
+              </button>
+            )
+          )}
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto bg-white border border-[#00000026] rounded-xl p-1 mb-8">
+      {/* Report tabs */}
+      <div className="mb-8 flex items-center gap-2 overflow-x-auto rounded-xl border border-[#00000026] bg-white p-1">
         {tabs.map((tab) => (
           <button
+            type="button"
             key={tab.name}
-            onClick={() => setActiveTab(tab.name)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition cursor-pointer whitespace-nowrap ${
-              activeTab === tab.name ? "bg-[#4B5EAA] text-white" : "text-gray-600 hover:bg-gray-100"
+            onClick={() =>
+              setActiveTab(tab.name)
+            }
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-semibold transition sm:px-5 ${
+              activeTab === tab.name
+                ? "bg-[#4B5EAA] text-white"
+                : "text-gray-600 hover:bg-gray-100"
             }`}
           >
-            {tab.icon} {tab.name}
+            {tab.icon}
+            {tab.name}
           </button>
         ))}
       </div>
 
-      {/* Content Area */}
+      {/* Report content */}
       <div>
-        {activeTab === "Sales Report" && <SalesReports period={period} />}
-        {activeTab === "Customer Purchase" && <CustomerPurchaseReport period={period} />}
-        {activeTab === "Advance Balance" && <AdvanceBalanceReport period={period} />}
-        {activeTab === "Invoice Report" && <InvoiceReport period={period} />}
+        {activeTab === "Sales Report" && (
+          <SalesReports period={period} />
+        )}
+
+        {activeTab === "Balance Amount Details" && (
+          <BalanceAmountReport period={period} />
+        )}
+
+        {activeTab === "Advance Balance" && (
+          <AdvanceBalanceReport period={period} />
+        )}
+
+        {activeTab === "Invoice Report" && (
+          <InvoiceReport period={period} />
+        )}
       </div>
     </div>
   );
